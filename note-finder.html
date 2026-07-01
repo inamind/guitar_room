@@ -830,7 +830,11 @@ function startTimer(durSec, onDone) {
     timerStart = performance.now();
     timerDur   = durSec * 1000;
     tickLabel();
-    timeoutId = setTimeout(() => { timerOnDone && timerOnDone(); timerOnDone = null; }, durSec * 1000);
+    timeoutId = setTimeout(() => { 
+        const cb = timerOnDone;
+        timerOnDone = null;
+        if (cb) cb();
+    }, durSec * 1000);
 }
 
 function tickLabel() {
