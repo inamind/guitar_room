@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chord Progression Player — Guitar Practice Hub</title>
+    <meta name="description" content="ii-V-I, 12마디 블루스, I-IV-V 등 코드 진행을 자동 재생. 기타 코드 진행 연습 도구.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        :root {
+            --bg:#0a0614;--card:rgba(16,10,28,.9);--border:rgba(255,255,255,.07);
+            --text:#f3f4f6;--muted:#6b7280;
+            --pink:#ec4899;--pink-dim:rgba(236,72,153,.15);
+            --violet:#7c3aed;--cyan:#06b6d4;--amber:#f59e0b;--green:#10b981;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Inter','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+        .bg-orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+        .o1{width:600px;height:600px;background:rgba(236,72,153,.08);top:-150px;right:-100px;}
+        .o2{width:500px;height:500px;background:rgba(124,58,237,.07);bottom:-100px;left:-100px;}
+
+        header{position:relative;z-index:10;background:rgba(10,6,20,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+        .hdr{max-width:1000px;margin:0 auto;padding:.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+        .back{display:flex;align-items:center;gap:.5rem;color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .2s;}
+        .back:hover{color:var(--text);}
+        .page-title{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+        .page-title i{color:var(--pink);}
+
+        main{flex:1;position:relative;z-index:1;max-width:1000px;margin:0 auto;width:100%;padding:2rem 1.5rem 5rem;}
+
+        .top{margin-bottom:2rem;}
+        .top h1{font-size:clamp(1.5rem,4vw,2rem);font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem;}
+        .top p{color:var(--muted);font-size:.875rem;}
+
+        /* Config bar */
+        .config-bar{display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:flex-end;}
+        .cf-group{display:flex;flex-direction:column;gap:.4rem;}
+        .cf-label{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+        .cf-select{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+            padding:.5rem .8rem;border-radius:10px;font-family:inherit;font-size:.85rem;cursor:pointer;outline:none;
+            appearance:none;-webkit-appearance:none;min-width:120px;}
+        .cf-select:focus{border-color:rgba(236,72,153,.5);}
+
+        /* Progression selector */
+        .prog-grid{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem;}
+        .prog-btn{padding:.5rem 1rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+            color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;}
+        .prog-btn:hover{border-color:rgba(236,72,153,.4);color:var(--text);}
+        .prog-btn.sel{background:var(--pink-dim);border-color:var(--pink);color:var(--pink);}
+
+        /* Transport */
+        .transport{display:flex;align-items:center;gap:1rem;margin-bottom:1.75rem;flex-wrap:wrap;}
+        .t-btn{padding:.75rem 1.5rem;border-radius:12px;border:none;font-family:inherit;font-size:.9rem;font-weight:700;
+            cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem;}
+        .t-play{background:var(--pink);color:#fff;flex:0 0 auto;}
+        .t-play:hover{background:#f472b6;}
+        .t-play.playing{background:var(--violet);}
+        .t-stop{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--muted);}
+        .t-stop:hover{color:var(--text);}
+
+        .bpm-wrap{display:flex;align-items:center;gap:.6rem;flex:1;min-width:180px;}
+        .bpm-lbl{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:36px;}
+        input[type=range]{flex:1;-webkit-appearance:none;height:5px;border-radius:3px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--pink);border:2px solid #fff;box-shadow:0 2px 8px rgba(236,72,153,.5);}
+        .bpm-val{font-size:.85rem;font-weight:700;width:40px;text-align:right;}
+
+        /* Repeat toggle */
+        .repeat-btn{padding:.55rem 1rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+            color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;
+            display:inline-flex;align-items:center;gap:.4rem;}
+        .repeat-btn.on{background:rgba(236,72,153,.15);border-color:var(--pink);color:var(--pink);}
+
+        /* ── Chord Track ── */
+        .chord-track{display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.75rem;margin-bottom:2rem;}
+        .chord-track::-webkit-scrollbar{height:4px;}
+        .chord-track::-webkit-scrollbar-track{background:transparent;}
+        .chord-track::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+
+        .chord-card{flex:0 0 130px;background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:1rem;
+            text-align:center;transition:all .25s;position:relative;overflow:hidden;}
+        .chord-card.active{border-color:var(--pink);box-shadow:0 0 24px rgba(236,72,153,.35);}
+        .chord-card.active::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--pink),transparent);}
+
+        .cc-bar-num{font-size:.6rem;font-weight:600;color:var(--muted);margin-bottom:.35rem;}
+        .cc-degree{font-size:.65rem;font-weight:700;letter-spacing:.06em;margin-bottom:.2rem;color:var(--muted);}
+        .cc-name{font-size:1.2rem;font-weight:900;letter-spacing:-.02em;line-height:1;margin-bottom:.25rem;}
+        .cc-type{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:6px;display:inline-block;}
+        .cc-duration{font-size:.62rem;color:var(--muted);margin-top:.4rem;}
+
+        /* Progress bar */
+        .prog-bar-wrap{background:rgba(255,255,255,.05);border-radius:4px;height:6px;margin-bottom:1.5rem;overflow:hidden;}
+        .prog-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--pink),#f9a8d4);width:0%;transition:width .15s linear;}
+
+        /* Theory panel */
+        .theory-panel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.5rem;}
+        .theory-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
+        .theory-desc{font-size:.875rem;color:#9ca3af;line-height:1.7;margin-bottom:1rem;}
+        .theory-chords{display:flex;gap:.5rem;flex-wrap:wrap;}
+        .tc{display:flex;flex-direction:column;align-items:center;gap:.15rem;background:rgba(255,255,255,.04);
+            border:1px solid var(--border);border-radius:10px;padding:.6rem .75rem;min-width:60px;}
+        .tc-degree{font-size:.6rem;font-weight:700;color:var(--muted);}
+        .tc-name{font-size:.85rem;font-weight:700;}
+        .tc-type{font-size:.6rem;padding:.1rem .35rem;border-radius:4px;}
+
+        /* Chord type colors */
+        .type-maj7{color:#10b981;}.type-7{color:#f59e0b;}.type-m7{color:#06b6d4;}
+        .type-maj{color:#10b981;}.type-m{color:#06b6d4;}.type-dim7{color:#f97316;}.type-7s{color:#a78bfa;}
+        .pill-maj7{background:rgba(16,185,129,.15);color:#10b981;}
+        .pill-7{background:rgba(245,158,11,.15);color:#f59e0b;}
+        .pill-m7{background:rgba(6,182,212,.15);color:#06b6d4;}
+        .pill-maj{background:rgba(16,185,129,.12);color:#10b981;}
+        .pill-m{background:rgba(6,182,212,.12);color:#06b6d4;}
+        .pill-dim7{background:rgba(249,115,22,.12);color:#f97316;}
+        .pill-7s{background:rgba(167,139,250,.12);color:#a78bfa;}
+        .pill-sus4{background:rgba(251,191,36,.12);color:#fbbf24;}
+    </style>
+</head>
+<body>
+    <div class="bg-orb o1"></div>
+    <div class="bg-orb o2"></div>
+
+    <header>
+        <div class="hdr">
+            <a class="back" href="index.html"><i class="fa-solid fa-arrow-left"></i> 허브로 돌아가기</a>
+            <div class="page-title"><i class="fa-solid fa-music"></i> Chord Progression Player</div>
+        </div>
+    </header>
+
+    <main>
+        <div class="top">
+            <h1>Chord Progression Player</h1>
+            <p>키와 코드 진행을 선택하고 재생하면 코드에 맞춰 연습할 수 있습니다.</p>
+        </div>
+
+        <!-- Config -->
+        <div class="config-bar">
+            <div class="cf-group">
+                <div class="cf-label">키 (Key)</div>
+                <select class="cf-select" id="key-select" onchange="onKeyChange()">
+                    <option value="0">C</option><option value="1">C# / Db</option>
+                    <option value="2">D</option><option value="3">D# / Eb</option>
+                    <option value="4">E</option><option value="5">F</option>
+                    <option value="6">F# / Gb</option><option value="7">G</option>
+                    <option value="8">G# / Ab</option><option value="9">A</option>
+                    <option value="10">A# / Bb</option><option value="11">B</option>
+                </select>
+            </div>
+            <div class="cf-group">
+                <div class="cf-label">분위기</div>
+                <select class="cf-select" id="genre-select" onchange="onGenreChange()">
+                    <option value="jazz">Jazz</option>
+                    <option value="blues">Blues</option>
+                    <option value="pop">Pop</option>
+                    <option value="bossa">Bossa Nova</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Progression selector -->
+        <div class="prog-grid" id="prog-buttons"></div>
+
+        <!-- Transport -->
+        <div class="transport">
+            <button class="t-btn t-play" id="play-btn" onclick="togglePlay()">
+                <i class="fa-solid fa-play" id="play-icon"></i> <span id="play-label">재생</span>
+            </button>
+            <button class="t-btn t-stop" onclick="stopPlayer()">
+                <i class="fa-solid fa-stop"></i> 정지
+            </button>
+            <button class="repeat-btn" id="repeat-btn" onclick="toggleRepeat()">
+                <i class="fa-solid fa-repeat"></i> 반복
+            </button>
+            <div class="bpm-wrap">
+                <span class="bpm-lbl">BPM</span>
+                <input type="range" id="bpm-sl" min="40" max="200" value="90" oninput="onBpmChange(this.value)">
+                <span class="bpm-val" id="bpm-val">90</span>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-fill"></div></div>
+
+        <!-- Chord track -->
+        <div class="chord-track" id="chord-track"></div>
+
+        <!-- Theory -->
+        <div class="theory-panel">
+            <div class="theory-title">이론 설명 (Theory)</div>
+            <div class="theory-desc" id="theory-desc"></div>
+            <div class="theory-chords" id="theory-chords"></div>
+        </div>
+    </main>
+
+<script>
+// ─── Note data ────────────────────────────────────────────────────────────
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+// chord intervals (semitones)
+const CHORD_TYPES = {
+    'maj7': [0,4,7,11],
+    '7':    [0,4,7,10],
+    'm7':   [0,3,7,10],
+    'maj':  [0,4,7],
+    'm':    [0,3,7],
+    'dim7': [0,3,6,9],
+    '7s':   [0,4,6,10],   // #11
+    'sus4': [0,5,7],
+    'm7b5': [0,3,6,10],
+};
+
+const PILL_CLASS = {
+    'maj7':'pill-maj7','7':'pill-7','m7':'pill-m7','maj':'pill-maj',
+    'm':'pill-m','dim7':'pill-dim7','7s':'pill-7s','sus4':'pill-sus4','m7b5':'pill-7'
+};
+
+// ─── Progressions ─────────────────────────────────────────────────────────
+const PROGRESSIONS = {
+    jazz: [
+        {
+            id:'ii-V-I', name:'ii – V – I (Jazz Standard)',
+            desc:'재즈의 핵심 진행. Dm7 → G7 → Cmaj7 (in C). ii 코드에서 긴장감을 쌓고, V7에서 최고조로 올라간 뒤 I로 해결됩니다.',
+            beats:4,
+            chords:[
+                {degree:'ii',  semitone:2,  type:'m7',  bars:2, label:'Dm7'},
+                {degree:'V',   semitone:7,  type:'7',   bars:2, label:'G7'},
+                {degree:'I',   semitone:0,  type:'maj7',bars:4, label:'Cmaj7'},
+            ]
+        },
+        {
+            id:'ii-V-I-VI', name:'ii – V – I – VI (Turnaround)',
+            desc:'ii-V-I에 VI7을 더한 터닝어라운드 진행. 곡의 처음으로 자연스럽게 돌아가게 합니다.',
+            beats:4,
+            chords:[
+                {degree:'ii', semitone:2, type:'m7',  bars:2, label:'Dm7'},
+                {degree:'V',  semitone:7, type:'7',   bars:2, label:'G7'},
+                {degree:'I',  semitone:0, type:'maj7',bars:2, label:'Cmaj7'},
+                {degree:'VI', semitone:9, type:'7',   bars:2, label:'A7'},
+            ]
+        },
+        {
+            id:'I-VI-ii-V', name:'I – VI – ii – V (Rhythm Changes)',
+            desc:'Gershwin의 "I Got Rhythm" 에서 유래한 재즈 스탠다드 진행. 팝과 재즈 모두에서 광범위하게 사용됩니다.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'maj7',bars:2, label:'Cmaj7'},
+                {degree:'VI', semitone:9, type:'m7',  bars:2, label:'Am7'},
+                {degree:'ii', semitone:2, type:'m7',  bars:2, label:'Dm7'},
+                {degree:'V',  semitone:7, type:'7',   bars:2, label:'G7'},
+            ]
+        },
+        {
+            id:'Autumn-Leaves', name:'ii – V – I × 2키 (Autumn Leaves)',
+            desc:'"Autumn Leaves" 스타일 — 장조와 단조의 ii-V-I를 번갈아 사용. 전조를 자연스럽게 연습할 수 있습니다.',
+            beats:4,
+            chords:[
+                {degree:'ii', semitone:2,  type:'m7',  bars:2, label:'Dm7'},
+                {degree:'V',  semitone:7,  type:'7',   bars:2, label:'G7'},
+                {degree:'I',  semitone:0,  type:'maj7',bars:2, label:'Cmaj7'},
+                {degree:'IV', semitone:5,  type:'maj7',bars:2, label:'Fmaj7'},
+                {degree:'vii°',semitone:11,type:'m7b5',bars:2, label:'Bm7b5'},
+                {degree:'III',semitone:4,  type:'7',   bars:2, label:'E7'},
+                {degree:'vi', semitone:9,  type:'m',   bars:4, label:'Am'},
+            ]
+        },
+    ],
+    blues: [
+        {
+            id:'12bar', name:'12마디 블루스',
+            desc:'가장 기본적인 12마디 블루스 진행. I7, IV7, V7의 세 도미넌트 코드만으로 구성됩니다.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'7', bars:4, label:'C7'},
+                {degree:'IV', semitone:5, type:'7', bars:2, label:'F7'},
+                {degree:'I',  semitone:0, type:'7', bars:2, label:'C7'},
+                {degree:'V',  semitone:7, type:'7', bars:1, label:'G7'},
+                {degree:'IV', semitone:5, type:'7', bars:1, label:'F7'},
+                {degree:'I',  semitone:0, type:'7', bars:1, label:'C7'},
+                {degree:'V',  semitone:7, type:'7', bars:1, label:'G7'},
+            ]
+        },
+        {
+            id:'quick-change', name:'퀵 체인지 블루스',
+            desc:'2마디에서 IV로 빠르게 이동하는 블루스 변형. 더 역동적인 느낌을 줍니다.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'7', bars:1, label:'C7'},
+                {degree:'IV', semitone:5, type:'7', bars:1, label:'F7'},
+                {degree:'I',  semitone:0, type:'7', bars:2, label:'C7'},
+                {degree:'IV', semitone:5, type:'7', bars:2, label:'F7'},
+                {degree:'I',  semitone:0, type:'7', bars:2, label:'C7'},
+                {degree:'V',  semitone:7, type:'7', bars:1, label:'G7'},
+                {degree:'IV', semitone:5, type:'7', bars:1, label:'F7'},
+                {degree:'I',  semitone:0, type:'7', bars:1, label:'C7'},
+                {degree:'V',  semitone:7, type:'7', bars:1, label:'G7'},
+            ]
+        },
+    ],
+    pop: [
+        {
+            id:'I-V-vi-IV', name:'I – V – vi – IV (팝 4화음)',
+            desc:'"Let It Be", "Can\'t Stop the Feeling" 등 수많은 팝 명곡에서 쓰이는 진행. 감정적이고 안정적인 느낌.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'maj', bars:2, label:'C'},
+                {degree:'V',  semitone:7, type:'maj', bars:2, label:'G'},
+                {degree:'vi', semitone:9, type:'m',   bars:2, label:'Am'},
+                {degree:'IV', semitone:5, type:'maj', bars:2, label:'F'},
+            ]
+        },
+        {
+            id:'I-IV-V', name:'I – IV – V (로큰롤/컨트리)',
+            desc:'로큰롤, 컨트리, 포크의 기본이 되는 3화음 진행. 단순하면서도 강력한 그루브.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'maj', bars:4, label:'C'},
+                {degree:'IV', semitone:5, type:'maj', bars:2, label:'F'},
+                {degree:'I',  semitone:0, type:'maj', bars:2, label:'C'},
+                {degree:'V',  semitone:7, type:'7',   bars:2, label:'G7'},
+                {degree:'I',  semitone:0, type:'maj', bars:2, label:'C'},
+            ]
+        },
+        {
+            id:'50s', name:'I – VI – IV – V (50년대 진행)',
+            desc:'"Blue Moon", "Stand By Me" 스타일. 낭만적이고 향수를 불러일으키는 진행.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'maj', bars:2, label:'C'},
+                {degree:'vi', semitone:9, type:'m',   bars:2, label:'Am'},
+                {degree:'IV', semitone:5, type:'maj', bars:2, label:'F'},
+                {degree:'V',  semitone:7, type:'maj', bars:2, label:'G'},
+            ]
+        },
+    ],
+    bossa: [
+        {
+            id:'bossa-basic', name:'보사노바 기본 진행',
+            desc:'"The Girl from Ipanema" 스타일. Imaj7 → ii7 → V7 로 흘러가는 보사노바 느낌.',
+            beats:4,
+            chords:[
+                {degree:'I',   semitone:0, type:'maj7', bars:4, label:'Cmaj7'},
+                {degree:'ii',  semitone:2, type:'m7',   bars:2, label:'Dm7'},
+                {degree:'V',   semitone:7, type:'7',    bars:2, label:'G7'},
+                {degree:'I',   semitone:0, type:'maj7', bars:4, label:'Cmaj7'},
+                {degree:'bII', semitone:1, type:'7',    bars:4, label:'Db7'},
+            ]
+        },
+        {
+            id:'bossa-samba', name:'삼바 진행 (I – IV – I – V)',
+            desc:'브라질리안 삼바의 기본. 밝고 경쾌한 리듬감이 특징.',
+            beats:4,
+            chords:[
+                {degree:'I',  semitone:0, type:'maj7', bars:2, label:'Cmaj7'},
+                {degree:'IV', semitone:5, type:'maj7', bars:2, label:'Fmaj7'},
+                {degree:'I',  semitone:0, type:'maj7', bars:2, label:'Cmaj7'},
+                {degree:'V',  semitone:7, type:'7',    bars:2, label:'G7'},
+            ]
+        },
+    ]
+};
+
+// ─── State ────────────────────────────────────────────────────────────────
+let rootKey = 0, currentGenre = 'jazz', currentProgIdx = 0;
+let bpm = 90, isPlaying = false, loopOn = true;
+let currentChordIdx = 0, currentBar = 0, totalBars = 0;
+let part = null, synth = null, beatScheduler = null;
+
+// ─── UI builders ──────────────────────────────────────────────────────────
+function buildProgButtons() {
+    const progs = PROGRESSIONS[currentGenre];
+    const el = document.getElementById('prog-buttons');
+    el.innerHTML = '';
+    progs.forEach((p, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'prog-btn' + (i === currentProgIdx ? ' sel' : '');
+        btn.textContent = p.name;
+        btn.onclick = () => { currentProgIdx = i; onProgChange(); };
+        el.appendChild(btn);
+    });
+}
+
+function onGenreChange() {
+    currentGenre = document.getElementById('genre-select').value;
+    currentProgIdx = 0;
+    if (isPlaying) stopPlayer();
+    buildProgButtons();
+    renderChordTrack();
+    renderTheory();
+}
+
+function onKeyChange() {
+    rootKey = +document.getElementById('key-select').value;
+    if (isPlaying) { stopPlayer(); }
+    renderChordTrack();
+    renderTheory();
+}
+
+function onProgChange() {
+    buildProgButtons();
+    if (isPlaying) { stopPlayer(); }
+    renderChordTrack();
+    renderTheory();
+}
+
+function getChordName(semitone, type) {
+    const noteIdx = (rootKey + semitone + 12) % 12;
+    const baseName = ['b','b'].includes(NOTE_NAMES[noteIdx][1]) ? NOTE_FLAT[noteIdx] : NOTE_NAMES[noteIdx];
+    const suffix = { 'maj7':'maj7','7':'7','m7':'m7','maj':'','m':'m','dim7':'dim7','7s':'7#11','sus4':'sus4','m7b5':'m7b5' }[type] ?? type;
+    return baseName + suffix;
+}
+
+function renderChordTrack() {
+    const prog = PROGRESSIONS[currentGenre][currentProgIdx];
+    totalBars = prog.chords.reduce((s,c) => s + c.bars, 0);
+    const el = document.getElementById('chord-track');
+    el.innerHTML = '';
+
+    let barOffset = 0;
+    prog.chords.forEach((c, i) => {
+        const card = document.createElement('div');
+        card.className = 'chord-card';
+        card.id = `chord-card-${i}`;
+        card.style.flex = `0 0 ${Math.max(110, c.bars * 65)}px`;
+
+        const chordName = getChordName(c.semitone, c.type);
+        const pillCls = PILL_CLASS[c.type] || 'pill-maj';
+        card.innerHTML = `
+            <div class="cc-bar-num">마디 ${barOffset + 1}${c.bars > 1 ? `–${barOffset + c.bars}` : ''}</div>
+            <div class="cc-degree">${c.degree}</div>
+            <div class="cc-name">${chordName}</div>
+            <div class="cc-type ${pillCls}">${c.type}</div>
+            <div class="cc-duration">${c.bars}마디</div>`;
+        el.appendChild(card);
+        barOffset += c.bars;
+    });
+}
+
+function renderTheory() {
+    const prog = PROGRESSIONS[currentGenre][currentProgIdx];
+    document.getElementById('theory-desc').textContent = prog.desc;
+
+    const el = document.getElementById('theory-chords');
+    el.innerHTML = '';
+    prog.chords.forEach(c => {
+        const name = getChordName(c.semitone, c.type);
+        const pillCls = PILL_CLASS[c.type] || 'pill-maj';
+        const d = document.createElement('div');
+        d.className = 'tc';
+        d.innerHTML = `<div class="tc-degree">${c.degree}</div><div class="tc-name">${name}</div><div class="tc-type ${pillCls}">${c.type}</div>`;
+        el.appendChild(d);
+    });
+}
+
+// ─── Audio ─────────────────────────────────────────────────────────────────
+async function ensureSynth() {
+    await Tone.start();
+    if (!synth) {
+        synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.02, decay: 0.5, sustain: 0.35, release: 1.2 },
+        }).toDestination();
+        synth.volume.value = -8;
+    }
+}
+
+function getChordFreqs(semitone, type) {
+    const rootMidi = 48 + (rootKey + semitone) % 12; // around C3
+    return CHORD_TYPES[type].map(iv => Tone.Frequency(rootMidi + iv, 'midi').toFrequency());
+}
+
+async function togglePlay() {
+    await ensureSynth();
+    if (isPlaying) stopPlayer();
+    else startPlayer();
+}
+
+function startPlayer() {
+    isPlaying = true;
+    currentChordIdx = 0;
+    currentBar = 0;
+
+    const btn = document.getElementById('play-btn');
+    btn.classList.add('playing');
+    document.getElementById('play-icon').className = 'fa-solid fa-pause';
+    document.getElementById('play-label').textContent = '일시정지';
+
+    Tone.getTransport().bpm.value = bpm;
+    Tone.getTransport().stop();
+    Tone.getTransport().cancel();
+
+    const prog = PROGRESSIONS[currentGenre][currentProgIdx];
+    const barDuration = (60 / bpm) * 4; // 4/4 time, seconds per bar
+
+    // Schedule all chord events
+    function scheduleChords(startTime) {
+        let t = startTime;
+        prog.chords.forEach((c, i) => {
+            const dur = barDuration * c.bars;
+            const freqs = getChordFreqs(c.semitone, c.type);
+
+            // Schedule chord onset
+            Tone.getDraw().schedule(() => {
+                highlightChord(i);
+                updateProgressBar(i, prog);
+            }, t);
+
+            synth.triggerAttackRelease(freqs, dur * 0.92, t);
+            t += dur;
+        });
+        return t; // return end time
+    }
+
+    const startT = Tone.now() + 0.1;
+    if (loopOn) {
+        const progDuration = prog.chords.reduce((s, c) => s + barDuration * c.bars, 0);
+        Tone.getTransport().scheduleRepeat(time => {
+            scheduleChords(time);
+        }, progDuration, '+0.1');
+    } else {
+        const endT = scheduleChords(startT);
+        Tone.getDraw().schedule(() => stopPlayer(), endT);
+    }
+
+    Tone.getTransport().start();
+    scheduleChords(startT);
+}
+
+function stopPlayer() {
+    isPlaying = false;
+    Tone.getTransport().stop();
+    Tone.getTransport().cancel();
+    if (synth) synth.releaseAll();
+
+    const btn = document.getElementById('play-btn');
+    btn.classList.remove('playing');
+    document.getElementById('play-icon').className = 'fa-solid fa-play';
+    document.getElementById('play-label').textContent = '재생';
+
+    document.querySelectorAll('.chord-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('prog-fill').style.width = '0%';
+}
+
+function highlightChord(idx) {
+    document.querySelectorAll('.chord-card').forEach((c, i) => {
+        c.classList.toggle('active', i === idx);
+    });
+    // Scroll into view
+    const card = document.getElementById(`chord-card-${idx}`);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+function updateProgressBar(chordIdx, prog) {
+    const barsBefore = prog.chords.slice(0, chordIdx).reduce((s, c) => s + c.bars, 0);
+    const totalBars = prog.chords.reduce((s, c) => s + c.bars, 0);
+    document.getElementById('prog-fill').style.width = `${(barsBefore / totalBars) * 100}%`;
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────
+function onBpmChange(val) {
+    bpm = +val;
+    document.getElementById('bpm-val').textContent = bpm;
+    if (isPlaying) { stopPlayer(); startPlayer(); }
+}
+
+function toggleRepeat() {
+    loopOn = !loopOn;
+    document.getElementById('repeat-btn').classList.toggle('on', loopOn);
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+document.getElementById('repeat-btn').classList.add('on');
+buildProgButtons();
+renderChordTrack();
+renderTheory();
+</script>
+</body>
+</html>

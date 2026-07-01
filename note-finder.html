@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기타 지판 음 찾기 연습 — Guitar Practice Hub</title>
+    <meta name="description" content="기타 지판에서 계이름 위치를 찾는 훈련. 24프렛 가로 지판, 모바일 지원.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* ── Variables ──────────────────────────────────────────────────── */
+        :root {
+            --bg:#070912; --card:rgba(12,16,28,.92); --border:rgba(255,255,255,.07);
+            --text:#f3f4f6; --muted:#6b7280;
+            --v:#7c3aed; --vl:#a78bfa; --vd:rgba(124,58,237,.15);
+            --green:#10b981; --amber:#f59e0b; --red:#ef4444; --cyan:#06b6d4;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        html{scroll-behavior:smooth;}
+        body{font-family:'Inter','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+        /* Background */
+        .bg-orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+        .o1{width:500px;height:500px;background:rgba(124,58,237,.08);top:-150px;left:-100px;}
+        .o2{width:400px;height:400px;background:rgba(6,182,212,.06);bottom:-80px;right:-80px;}
+
+        /* ── Header ─────────────────────────────────────────────────────── */
+        header{position:relative;z-index:10;background:rgba(7,9,18,.85);backdrop-filter:blur(20px);
+            border-bottom:1px solid var(--border);}
+        .hdr{max-width:1500px;margin:0 auto;padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;}
+        .back{display:flex;align-items:center;gap:.4rem;color:var(--muted);text-decoration:none;font-size:.8rem;transition:color .2s;}
+        .back:hover{color:var(--text);}
+        .page-title{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:.4rem;}
+        .page-title i{color:var(--vl);}
+
+        /* ── Main Layout ─────────────────────────────────────────────────── */
+        main{flex:1;position:relative;z-index:1;max-width:1500px;margin:0 auto;width:100%;
+            padding:1rem 1rem 3rem;
+            display:grid;grid-template-columns:272px 1fr;gap:1rem;align-items:start;}
+
+        /* ── Panel ─────────────────────────────────────────────────────── */
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:18px;
+            padding:1.1rem 1.2rem;display:flex;flex-direction:column;gap:.9rem;}
+        .panel-title{font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);}
+
+        /* ── Note Stage ─────────────────────────────────────────────────── */
+        .note-stage{display:flex;flex-direction:column;align-items:center;gap:.5rem;
+            padding:1.25rem .75rem;background:var(--vd);border:1px solid rgba(124,58,237,.22);
+            border-radius:14px;text-align:center;}
+        .stage-lbl{font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--vl);}
+        #note-display{font-size:5rem;font-weight:900;line-height:1;letter-spacing:-.04em;min-height:80px;
+            display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,#fff 0%,var(--vl) 100%);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        #note-display.pop{animation:notePop .32s cubic-bezier(.34,1.56,.64,1);}
+        @keyframes notePop{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+        /* Phase badge */
+        .phase-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.22rem .7rem;
+            border-radius:999px;font-size:.7rem;font-weight:600;}
+        .ph-idle  {background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);}
+        .ph-think {background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fcd34d;}
+        .ph-reveal{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;}
+
+        /* ── Timer ──────────────────────────────────────────────────────── */
+        .timer-wrap{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+        #timer-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--v),var(--cyan));width:100%;}
+        #timer-lbl{font-size:.72rem;color:var(--muted);text-align:center;margin-top:.3rem;min-height:1rem;}
+
+        /* ── Buttons ─────────────────────────────────────────────────────── */
+        .btn-row{display:flex;gap:.5rem;}
+        .btn-start{flex:1;padding:.8rem;border-radius:12px;border:none;font-family:inherit;
+            font-size:.88rem;font-weight:800;cursor:pointer;transition:all .2s;
+            display:flex;align-items:center;justify-content:center;gap:.45rem;
+            background:linear-gradient(135deg,var(--v),#4f46e5);color:#fff;
+            box-shadow:0 4px 18px rgba(124,58,237,.4);}
+        .btn-start:hover{filter:brightness(1.1);transform:translateY(-1px);}
+        .btn-start.stop{background:linear-gradient(135deg,var(--red),#b91c1c);box-shadow:0 4px 18px rgba(239,68,68,.35);}
+        .btn-hint{padding:.8rem .9rem;border-radius:12px;border:1px solid rgba(245,158,11,.35);
+            background:rgba(245,158,11,.1);color:#fcd34d;font-family:inherit;font-size:.8rem;font-weight:700;
+            cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.35rem;flex-shrink:0;}
+        .btn-hint:hover{background:rgba(245,158,11,.22);}
+
+        /* Keyboard hint */
+        .kbd-hint{text-align:center;font-size:.66rem;color:var(--muted);}
+        kbd{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;
+            padding:.08rem .3rem;font-size:.64rem;font-family:inherit;}
+
+        /* ── Collapsible options toggle (mobile only) ──────────────────── */
+        .opts-toggle{display:none;width:100%;padding:.65rem 1rem;border-radius:10px;
+            border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);
+            font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;
+            align-items:center;justify-content:space-between;transition:all .2s;}
+        .opts-toggle:hover{color:var(--text);border-color:var(--v);}
+        .opts-toggle i.arr{transition:transform .2s;}
+        .opts-toggle.open i.arr{transform:rotate(180deg);}
+        #opts-body{display:flex;flex-direction:column;gap:.9rem;}
+
+        /* ── Options ─────────────────────────────────────────────────────── */
+        .opt-section{display:flex;flex-direction:column;gap:.55rem;}
+        .opt-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
+        .opt-name{font-size:.78rem;font-weight:500;}
+        .opt-sub{font-size:.66rem;color:var(--muted);}
+
+        /* Toggle switch */
+        .toggle{position:relative;width:38px;height:21px;cursor:pointer;flex-shrink:0;}
+        .toggle input{opacity:0;width:0;height:0;}
+        .tslider{position:absolute;inset:0;background:rgba(255,255,255,.08);border-radius:999px;
+            border:1px solid var(--border);transition:.2s;}
+        .tslider::before{content:'';position:absolute;width:15px;height:15px;background:var(--muted);
+            border-radius:50%;top:2px;left:2px;transition:.2s;}
+        .toggle input:checked+.tslider{background:rgba(124,58,237,.4);border-color:var(--v);}
+        .toggle input:checked+.tslider::before{background:var(--vl);transform:translateX(17px);}
+
+        /* Number input */
+        .num-wrap{display:flex;align-items:center;gap:.3rem;}
+        .num-in{width:52px;padding:.32rem .4rem;border-radius:7px;border:1px solid var(--border);
+            background:rgba(255,255,255,.06);color:var(--text);font-family:inherit;
+            font-size:.86rem;font-weight:700;text-align:center;outline:none;}
+        .num-in:focus{border-color:var(--v);}
+        .num-unit{font-size:.7rem;color:var(--muted);}
+
+        /* Divider */
+        .divider{border:none;border-top:1px solid var(--border);}
+
+        /* Mini button */
+        .mini-btn{padding:.22rem .55rem;border-radius:6px;border:1px solid var(--border);
+            background:rgba(255,255,255,.04);color:var(--muted);font-size:.68rem;font-weight:600;
+            cursor:pointer;font-family:inherit;transition:all .2s;}
+        .mini-btn:hover{color:var(--text);border-color:var(--v);}
+
+        /* ── String Selector ─────────────────────────────────────────────── */
+        #str-sel{display:flex;flex-direction:column;gap:.3rem;}
+        .str-row{display:flex;align-items:center;gap:.5rem;padding:.28rem .4rem;border-radius:7px;
+            cursor:pointer;transition:background .15s;}
+        .str-row:hover{background:rgba(255,255,255,.04);}
+        .str-row.checked .str-badge{border-color:var(--v);color:var(--vl);background:var(--vd);}
+        .str-row.checked .str-open-note{color:var(--vl);}
+        .str-cb{width:14px;height:14px;accent-color:var(--v);cursor:pointer;flex-shrink:0;}
+        .str-badge{font-size:.65rem;font-weight:700;padding:.12rem .36rem;border-radius:5px;
+            border:1px solid var(--border);color:var(--muted);transition:all .2s;min-width:34px;text-align:center;flex-shrink:0;}
+        .str-wire{flex:1;border-radius:2px;background:linear-gradient(90deg,#c8b87a,#e8d89a);opacity:.5;transition:opacity .2s;}
+        .str-row.checked .str-wire{opacity:1;}
+        .str-open-note{font-size:.72rem;font-weight:700;color:var(--muted);width:20px;text-align:right;flex-shrink:0;}
+
+        /* ── Stats ───────────────────────────────────────────────────────── */
+        .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;}
+        .stat-box{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;
+            padding:.5rem .4rem;text-align:center;}
+        .stat-val{font-size:1.25rem;font-weight:900;line-height:1;}
+        .stat-lbl{font-size:.56rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+
+        /* ── Fretboard Section ────────────────────────────────────────────── */
+        .fb-section{display:flex;flex-direction:column;gap:.9rem;}
+
+        /* Top bar: legend + fret range */
+        .fb-top-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;
+            background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.65rem 1rem;}
+        .legend{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--muted);flex-wrap:wrap;}
+        .leg-dot{width:12px;height:12px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:.25rem;
+            background:radial-gradient(circle at 35% 30%,#c4b5fd,#5b21b6);}
+
+        /* Fret range buttons */
+        .fr-wrap{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;}
+        .fr-lbl{font-size:.65rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);}
+        .fr-btns{display:flex;gap:.3rem;flex-wrap:wrap;}
+        .fr-btn{padding:.3rem .65rem;border-radius:7px;border:1px solid var(--border);
+            background:rgba(255,255,255,.04);color:var(--muted);font-size:.72rem;font-weight:600;
+            cursor:pointer;font-family:inherit;transition:all .2s;}
+        .fr-btn:hover{color:var(--text);border-color:rgba(124,58,237,.4);}
+        .fr-btn.sel{background:var(--vd);border-color:var(--v);color:var(--vl);}
+
+        /* Scrollable fretboard */
+        .fb-scroll-wrap{background:rgba(8,4,20,.96);border:1px solid var(--border);border-radius:16px;
+            overflow-x:auto;padding:.9rem 1rem 1.1rem;-webkit-overflow-scrolling:touch;}
+        .fb-scroll-wrap::-webkit-scrollbar{height:4px;}
+        .fb-scroll-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:2px;}
+        .fb-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+        #fb-svg{display:block;}
+
+        /* Note dot animation */
+        @keyframes dotPop{
+            0%  {opacity:0;transform:scale(.15);}
+            65% {transform:scale(1.22);}
+            100%{opacity:1;transform:scale(1);}
+        }
+        .dot-g{transform-box:fill-box;transform-origin:center;cursor:pointer;}
+        .dot-g.animated{animation:dotPop .3s cubic-bezier(.34,1.56,.64,1) both;}
+
+        /* History */
+        .history-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;}
+        .history-wrap{display:flex;gap:.3rem;flex-wrap:wrap;min-height:22px;margin-top:.35rem;}
+        .hist-pill{font-size:.7rem;font-weight:800;padding:.15rem .45rem;border-radius:5px;
+            background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);color:var(--vl);
+            animation:pillIn .2s ease;}
+        @keyframes pillIn{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
+
+        /* ── MOBILE (<640px) ─────────────────────────────────────────────── */
+        @media (max-width:860px) {
+            main{grid-template-columns:1fr;}
+        }
+
+        @media (max-width:640px) {
+            main{padding:.75rem .75rem 2.5rem;}
+            .panel{padding:.9rem 1rem;gap:.75rem;}
+
+            /* Smaller note display */
+            #note-display{font-size:4rem;min-height:64px;}
+            .note-stage{padding:1rem .75rem;gap:.4rem;}
+
+            /* Show collapsible toggle, hide opts-body by default */
+            .opts-toggle{display:flex;}
+            #opts-body{display:none;}
+            #opts-body.open{display:flex;}
+
+            /* 2-column string selector */
+            #str-sel{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;}
+            .str-wire{display:none;}
+
+            /* Compact stats */
+            .stat-val{font-size:1.1rem;}
+
+            /* FB top bar: vertical stack */
+            .fb-top-bar{flex-direction:column;align-items:flex-start;gap:.5rem;}
+
+            /* Larger touch targets */
+            .btn-start{padding:.85rem;}
+            .fr-btn{padding:.4rem .75rem;font-size:.75rem;}
+        }
+
+        @media (max-width:400px) {
+            #note-display{font-size:3.2rem;min-height:52px;}
+            .fr-btns{flex-wrap:wrap;}
+        }
+    </style>
+</head>
+<body>
+<div class="bg-orb o1"></div>
+<div class="bg-orb o2"></div>
+
+<header>
+    <div class="hdr">
+        <a class="back" href="index.html"><i class="fa-solid fa-arrow-left"></i> 허브</a>
+        <div class="page-title"><i class="fa-solid fa-location-crosshairs"></i> 기타 지판 음 찾기 연습</div>
+    </div>
+</header>
+
+<main>
+    <!-- ── LEFT PANEL ───────────────────────────────────────── -->
+    <aside class="panel">
+
+        <!-- Note display -->
+        <div class="note-stage">
+            <div class="stage-lbl">현재 계이름</div>
+            <div id="note-display">—</div>
+            <div class="phase-badge ph-idle" id="phase-badge">
+                <i class="fa-solid fa-pause fa-xs"></i> 대기 중
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div>
+            <div class="timer-wrap"><div id="timer-fill" style="width:100%"></div></div>
+            <div id="timer-lbl">시작 버튼을 눌러 연습을 시작하세요</div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="btn-row">
+            <button class="btn-start" id="btn-start" onclick="togglePractice()">
+                <i class="fa-solid fa-play" id="start-icon"></i>
+                <span id="start-lbl">연습 시작</span>
+            </button>
+            <button class="btn-hint" id="btn-hint" onclick="hintReveal()" style="display:none">
+                <i class="fa-solid fa-lightbulb"></i> 힌트
+            </button>
+        </div>
+        <div class="kbd-hint"><kbd>Space</kbd> 공개/다음&nbsp;&nbsp;<kbd>H</kbd> 힌트</div>
+
+        <!-- Mobile collapsible toggle -->
+        <button class="opts-toggle" id="opts-toggle" onclick="toggleOpts()">
+            <span><i class="fa-solid fa-sliders fa-xs"></i> 옵션 · 줄 선택 · 통계</span>
+            <i class="fa-solid fa-chevron-down arr" id="opts-chevron"></i>
+        </button>
+
+        <!-- Options body (collapsible on mobile) -->
+        <div id="opts-body">
+            <hr class="divider">
+
+            <!-- Options -->
+            <div class="opt-section">
+                <div class="panel-title">옵션</div>
+
+                <div class="opt-row">
+                    <div><div class="opt-name"># (샤프) 포함</div><div class="opt-sub">C#, D#, F#, G#, A#</div></div>
+                    <label class="toggle"><input type="checkbox" id="opt-sharp" checked><span class="tslider"></span></label>
+                </div>
+                <div class="opt-row">
+                    <div><div class="opt-name">♭ (플랫) 포함</div><div class="opt-sub">Db, Eb, Gb, Ab, Bb</div></div>
+                    <label class="toggle"><input type="checkbox" id="opt-flat"><span class="tslider"></span></label>
+                </div>
+                <div class="opt-row">
+                    <div><div class="opt-name">정답 공개 전 대기</div><div class="opt-sub">계이름 표시 → 지판 공개까지</div></div>
+                    <div class="num-wrap"><input class="num-in" type="number" id="opt-reveal" min="1" max="60" value="5"><span class="num-unit">초</span></div>
+                </div>
+                <div class="opt-row">
+                    <div><div class="opt-name">공개 후 다음까지</div><div class="opt-sub">정답 확인 후 다음 문제까지</div></div>
+                    <div class="num-wrap"><input class="num-in" type="number" id="opt-next" min="1" max="60" value="3"><span class="num-unit">초</span></div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- String selector -->
+            <div class="opt-section">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.1rem;">
+                    <div class="panel-title">줄 선택</div>
+                    <div style="display:flex;gap:.25rem;">
+                        <button class="mini-btn" onclick="setAllStr(true)">전체</button>
+                        <button class="mini-btn" onclick="setAllStr(false)">해제</button>
+                    </div>
+                </div>
+                <div id="str-sel"></div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Stats -->
+            <div class="opt-section">
+                <div class="panel-title">통계</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-count" style="color:#a78bfa">0</div>
+                        <div class="stat-lbl">문제 수</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-time" style="color:#fcd34d">0s</div>
+                        <div class="stat-lbl">경과</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-streak" style="color:#6ee7b7">0</div>
+                        <div class="stat-lbl">연속</div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /opts-body -->
+
+    </aside>
+
+    <!-- ── RIGHT: FRETBOARD ──────────────────────────────────── -->
+    <section class="fb-section">
+
+        <div class="fb-top-bar">
+            <div class="legend">
+                <span><span class="leg-dot"></span>계이름 위치 (클릭 → 소리)</span>
+                <span style="color:rgba(255,255,255,.15)">·</span>
+                <span>1번줄(e) = 위 | 6번줄(E) = 아래</span>
+            </div>
+            <div class="fr-wrap">
+                <span class="fr-lbl">프렛 범위</span>
+                <div class="fr-btns" id="fr-btns">
+                    <button class="fr-btn" data-s="0"  data-e="12" onclick="setFretRange(0,12)">0–12</button>
+                    <button class="fr-btn" data-s="1"  data-e="12" onclick="setFretRange(1,12)">1–12</button>
+                    <button class="fr-btn" data-s="12" data-e="24" onclick="setFretRange(12,24)">12–24</button>
+                    <button class="fr-btn sel" data-s="0" data-e="24" onclick="setFretRange(0,24)">전체</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="fb-scroll-wrap">
+            <svg id="fb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <div class="history-section">
+            <div class="panel-title">최근 히스토리</div>
+            <div class="history-wrap" id="history-wrap"></div>
+        </div>
+
+    </section>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════
+const NOTE_TO_SEMI = {
+    'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,
+    'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,
+    'A':9,'A#':10,'Bb':10,'B':11
+};
+const NATURAL = ['C','D','E','F','G','A','B'];
+const SHARPS  = ['C#','D#','F#','G#','A#'];
+const FLATS   = ['Db','Eb','Gb','Ab','Bb'];
+
+// Standard tuning: midiIdx 0=str6(E2), 5=str1(e4)
+const OPEN_MIDI  = [40, 45, 50, 55, 59, 64];
+
+// Display order (top→bottom): str1(e) … str6(E)  →  displayIdx 0..5 = midiIdx 5..0
+const DISP_OPEN   = ['e','B','G','D','A','E'];
+const DISP_LABELS = ['1번줄','2번줄','3번줄','4번줄','5번줄','6번줄'];
+const DISP_WIDTHS = [1.0, 1.5, 2.0, 2.5, 3.0, 3.6]; // string thickness (thin→thick)
+
+const MARK1 = new Set([3,5,7,9,15,17,19,21]);
+const MARK2 = new Set([12,24]);
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESPONSIVE LAYOUT CALCULATOR
+// ═══════════════════════════════════════════════════════════════════════
+let FR_START = 0, FR_END = 24;
+let LAYOUT = null; // current fretboard geometry
+
+/*
+ * Layout rules:
+ *   - FR_START=0: show open-string column (left of nut) + frets 1..FR_END
+ *   - FR_START>0: show only frets FR_START..FR_END (no open string)
+ *
+ * Fret slot index i = fret - max(1, FR_START)   (0-based)
+ *   e.g. FR_START=1,fret=1 → i=0 (first slot)
+ *        FR_START=12,fret=12 → i=0 (first slot)
+ *
+ * numSlots = FR_END - max(1, FR_START) + 1
+ * nutX     = mL
+ * wireX(f) = mL + (f - max(1,FR_START) + 1) * fW   (right edge of fret slot)
+ * fretX(f) = mL + (f - max(1,FR_START)) * fW + fW/2  (center of fret slot)
+ * openX    = mL - 22                                   (open string col, only if FR_START=0)
+ * svgW     = mL + numSlots * fW + mR
+ */
+function calcLayout(startFret, endFret) {
+    const isMobile = window.innerWidth < 640;
+    const numSlots = endFret - Math.max(1, startFret) + 1;
+
+    // On mobile, choose fW to fit without forcing scroll
+    // Available = screenW - (2*pagePad=16) - mL - mR
+    const pagePad = isMobile ? 12 : 16;
+    const mL = isMobile ? 46 : 56;
+    const mR = 12;
+    const mT = isMobile ? 26 : 34;
+    const mB = isMobile ? 14 : 20;
+    const sS = isMobile ? 27 : 33;
+    const openCol = startFret === 0 ? 32 : 0; // extra width for open string area
+
+    let fW;
+    if (isMobile) {
+        const avail = window.innerWidth - pagePad * 2 - mL - mR - openCol;
+        fW = Math.max(18, Math.min(36, Math.floor(avail / numSlots)));
+    } else {
+        fW = 40;
+    }
+
+    const svgW = mL + openCol + numSlots * fW + mR;
+    const svgH = mT + 5 * sS + mB;
+
+    return {
+        mL, mR, mT, mB, sS, fW, openCol, numSlots,
+        startFret, endFret, isMobile, svgW, svgH,
+
+        strY(midiIdx) { return mT + (5 - midiIdx) * sS; },
+
+        // Center X of a given fret
+        fretX(fret) {
+            if (fret === 0) return mL - 18;          // open string
+            const slot = fret - Math.max(1, startFret); // 0-based slot
+            return mL + openCol + slot * fW + fW / 2;
+        },
+
+        // X of fret wire (right edge of slot)
+        wireX(fret) {
+            const slot = fret - Math.max(1, startFret) + 1;
+            return mL + openCol + slot * fW;
+        },
+
+        // Is this fret in the visible range?
+        inRange(fret) {
+            if (fret === 0) return startFret === 0;
+            return fret >= Math.max(1, startFret) && fret <= endFret;
+        }
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUILD SVG FRETBOARD
+// ═══════════════════════════════════════════════════════════════════════
+function buildFretboard(startFret = FR_START, endFret = FR_END) {
+    FR_START = startFret;
+    FR_END   = endFret;
+    LAYOUT   = calcLayout(startFret, endFret);
+
+    const L   = LAYOUT;
+    const svg = document.getElementById('fb-svg');
+    svg.setAttribute('viewBox', `0 0 ${L.svgW} ${L.svgH}`);
+    svg.setAttribute('width',   L.svgW);
+    svg.setAttribute('height',  L.svgH);
+    svg.innerHTML = '';
+
+    const NS = 'http://www.w3.org/2000/svg';
+    function mk(tag, a = {}, txt = '') {
+        const el = document.createElementNS(NS, tag);
+        Object.entries(a).forEach(([k, v]) => el.setAttribute(k, String(v)));
+        if (txt) el.textContent = txt;
+        return el;
+    }
+
+    // ── DEFS ──
+    const defs = mk('defs');
+    const wg = mk('linearGradient', { id:'wg', x1:0, y1:0, x2:0, y2:1 });
+    [['0%','#7a4e1a'],['48%','#8b5e2a'],['100%','#6b4518']].forEach(([o,c]) => {
+        const s = mk('stop'); s.setAttribute('offset',o); s.setAttribute('stop-color',c); wg.appendChild(s);
+    });
+    defs.appendChild(wg);
+    const ng = mk('radialGradient', { id:'ng', cx:'35%', cy:'30%', r:'65%' });
+    [['0%','#c4b5fd'],['100%','#5b21b6']].forEach(([o,c]) => {
+        const s = mk('stop'); s.setAttribute('offset',o); s.setAttribute('stop-color',c); ng.appendChild(s);
+    });
+    defs.appendChild(ng);
+    const flt = mk('filter', { id:'gl', x:'-40%', y:'-40%', width:'180%', height:'180%' });
+    const gb = mk('feGaussianBlur', { in:'SourceGraphic', stdDeviation: L.isMobile ? 2.5 : 3.5, result:'b' });
+    const gm = mk('feMerge');
+    gm.appendChild(mk('feMergeNode', { in:'b' }));
+    gm.appendChild(mk('feMergeNode', { in:'SourceGraphic' }));
+    flt.appendChild(gb); flt.appendChild(gm);
+    defs.appendChild(flt);
+    svg.appendChild(defs);
+
+    const bodyY = L.mT - 8;
+    const bodyH = 5 * L.sS + 16;
+
+    // ── FRETBOARD BODY ──
+    svg.appendChild(mk('rect', {
+        x: L.mL + L.openCol - 2, y: bodyY,
+        width: L.numSlots * L.fW + 2, height: bodyH,
+        fill: 'url(#wg)'
+    }));
+
+    // ── NUT or START BOUNDARY ──
+    if (startFret === 0) {
+        // Full nut
+        svg.appendChild(mk('rect', {
+            x: L.mL + L.openCol - 5, y: bodyY,
+            width: 5, height: bodyH,
+            fill: '#e8d5a0', rx: 1
+        }));
+    } else {
+        // Dashed start line with fret number label
+        svg.appendChild(mk('line', {
+            x1: L.mL, y1: bodyY,
+            x2: L.mL, y2: bodyY + bodyH,
+            stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2,
+            'stroke-dasharray': '4,3'
+        }));
+        svg.appendChild(mk('text', {
+            x: L.mL - 3, y: L.mT + 2.5 * L.sS,
+            'text-anchor': 'middle', 'dominant-baseline': 'middle',
+            fill: 'rgba(255,255,255,.2)', 'font-size': 8, 'font-weight': 600,
+            'font-family': 'Inter,sans-serif',
+            transform: `rotate(-90, ${L.mL - 3}, ${L.mT + 2.5 * L.sS})`
+        }, `${startFret}fr`));
+    }
+
+    // ── FRET WIRES ──
+    for (let f = Math.max(1, startFret); f <= endFret; f++) {
+        const x = L.wireX(f);
+        const isOct = (f === 12 || f === 24);
+        svg.appendChild(mk('line', {
+            x1: x, y1: bodyY, x2: x, y2: bodyY + bodyH,
+            stroke: isOct ? '#e0e0e0' : '#a8a8a8',
+            'stroke-width': isOct ? 2.5 : 1.5
+        }));
+    }
+
+    // ── POSITION MARKERS ──
+    const midY = L.mT + 2.5 * L.sS;
+    const dotR = L.isMobile ? 4.5 : 6;
+    [...MARK1, ...MARK2].forEach(f => {
+        if (!L.inRange(f)) return;
+        const cx = L.fretX(f);
+        if (MARK1.has(f)) {
+            svg.appendChild(mk('circle', { cx, cy: midY, r: dotR, fill: 'rgba(255,255,255,.7)', opacity: .45 }));
+        } else {
+            // Double dots: between str1-str2 and between str5-str6
+            [0.5, 4.5].forEach(off => {
+                svg.appendChild(mk('circle', { cx, cy: L.mT + off * L.sS, r: dotR, fill: 'rgba(255,255,255,.7)', opacity: .45 }));
+            });
+        }
+    });
+
+    // ── FRET NUMBER LABELS (above fretboard) ──
+    for (let f = Math.max(1, startFret); f <= endFret; f++) {
+        const mark = MARK1.has(f) || MARK2.has(f);
+        const cx = L.fretX(f);
+        svg.appendChild(mk('text', {
+            x: cx, y: L.mT - (L.isMobile ? 13 : 17),
+            'text-anchor': 'middle',
+            fill: mark ? '#fcd34d' : 'rgba(255,255,255,.18)',
+            'font-size': mark ? (L.isMobile ? 9 : 11) : (L.isMobile ? 7.5 : 9),
+            'font-weight': mark ? 700 : 400,
+            'font-family': 'Inter,sans-serif'
+        }, String(f)));
+    }
+
+    // "OPEN" label
+    if (startFret === 0) {
+        svg.appendChild(mk('text', {
+            x: L.mL - 18, y: L.mT - (L.isMobile ? 13 : 17),
+            'text-anchor': 'middle',
+            fill: 'rgba(255,255,255,.2)', 'font-size': L.isMobile ? 6.5 : 8,
+            'font-weight': 400, 'font-family': 'Inter,sans-serif'
+        }, 'OPEN'));
+    }
+
+    // ── STRINGS (top=str1/e, bottom=str6/E) ──
+    for (let di = 0; di < 6; di++) {
+        const mi = 5 - di;
+        const y  = L.strY(mi);
+        const sw = DISP_WIDTHS[di] * (L.isMobile ? 0.85 : 1);
+
+        // String line
+        svg.appendChild(mk('line', {
+            x1: L.mL + L.openCol - 4, y1: y,
+            x2: L.mL + L.openCol + L.numSlots * L.fW, y2: y,
+            stroke: '#d4c06a', 'stroke-width': sw, 'stroke-linecap': 'round'
+        }));
+
+        // Open string note label (left)
+        svg.appendChild(mk('text', {
+            x: L.mL + L.openCol - (startFret === 0 ? 28 : 26), y: y + 4,
+            'text-anchor': 'middle', fill: 'rgba(255,255,255,.5)',
+            'font-size': L.isMobile ? 9 : 11, 'font-weight': 700,
+            'font-family': 'Inter,sans-serif'
+        }, DISP_OPEN[di]));
+    }
+
+    // ── NOTE LAYER (dynamic) ──
+    svg.appendChild(mk('g', { id: 'note-layer' }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NOTE DOTS
+// ═══════════════════════════════════════════════════════════════════════
+function clearDots() {
+    const l = document.getElementById('note-layer');
+    if (l) l.innerHTML = '';
+}
+
+function showDots(noteName, withAnim = true) {
+    const layer = document.getElementById('note-layer');
+    layer.innerHTML = '';
+
+    const semi = NOTE_TO_SEMI[noteName];
+    if (semi === undefined || !LAYOUT) return;
+
+    const L  = LAYOUT;
+    const NS = 'http://www.w3.org/2000/svg';
+    function mk(tag, a = {}, txt = '') {
+        const el = document.createElementNS(NS, tag);
+        Object.entries(a).forEach(([k, v]) => el.setAttribute(k, String(v)));
+        if (txt) el.textContent = txt;
+        return el;
+    }
+
+    const r  = L.isMobile ? 9 : 11;
+    let idx = 0;
+
+    for (let mi = 0; mi < 6; mi++) {
+        if (!strEnabled(mi)) continue;
+        const open = OPEN_MIDI[mi];
+
+        // Determine fret scan range
+        const scanStart = FR_START === 0 ? 0 : FR_START;
+        const scanEnd   = FR_END;
+
+        for (let f = scanStart; f <= scanEnd; f++) {
+            if (!L.inRange(f)) continue;
+            if ((open + f) % 12 !== semi) continue;
+
+            const cx    = L.fretX(f);
+            const cy    = L.strY(mi);
+            const delay = withAnim ? idx * 38 : 0;
+            const midi  = open + f;
+
+            // Group translated to (cx,cy) so transform-origin:center works
+            const g = mk('g', { transform: `translate(${cx},${cy})`, class: 'dot-g' });
+            g.style.animationDelay = delay + 'ms';
+
+            g.appendChild(mk('circle', {
+                cx: 0, cy: 0, r,
+                fill: 'url(#ng)', filter: 'url(#gl)',
+                stroke: '#c4b5fd', 'stroke-width': L.isMobile ? 1.2 : 1.5
+            }));
+
+            const isLong = noteName.length > 1;
+            const fs     = L.isMobile ? (isLong ? 6 : 8) : (isLong ? 7.5 : 9.5);
+            g.appendChild(mk('text', {
+                x: 0, y: isLong ? (L.isMobile ? 2 : 2.8) : (L.isMobile ? 2.8 : 3.8),
+                'text-anchor': 'middle', fill: '#ffffff',
+                'font-size': fs, 'font-weight': 900, 'font-family': 'Inter,sans-serif'
+            }, noteName));
+
+            // Click = play that note
+            g.addEventListener('click', () => { if (synth) playSingleNote(midi); });
+
+            layer.appendChild(g);
+
+            if (withAnim) {
+                requestAnimationFrame(() => g.classList.add('animated'));
+            } else {
+                g.style.animation = 'none';
+                g.style.opacity = 1;
+            }
+            idx++;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FRET RANGE SELECTOR
+// ═══════════════════════════════════════════════════════════════════════
+function setFretRange(s, e) {
+    FR_START = s; FR_END = e;
+    document.querySelectorAll('.fr-btn').forEach(b => {
+        b.classList.toggle('sel', +b.dataset.s === s && +b.dataset.e === e);
+    });
+    buildFretboard(s, e);
+    if (currentNote) showDots(currentNote, false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STRING SELECTOR UI
+// ═══════════════════════════════════════════════════════════════════════
+const strOn = [true, true, true, true, true, true]; // displayIdx 0..5
+
+function strEnabled(midiIdx) { return strOn[5 - midiIdx]; }
+
+function buildStringSel() {
+    const el = document.getElementById('str-sel');
+    el.innerHTML = '';
+    for (let di = 0; di < 6; di++) {
+        const mi  = 5 - di;
+        const ch  = strOn[di];
+        const wH  = Math.round(DISP_WIDTHS[di] + 1);
+
+        const label = document.createElement('label');
+        label.className = 'str-row' + (ch ? ' checked' : '');
+        label.htmlFor = `scb-${di}`;
+        label.innerHTML = `
+            <input class="str-cb" type="checkbox" id="scb-${di}" ${ch ? 'checked' : ''}
+                onchange="toggleStr(${di}, this.checked)">
+            <span class="str-badge">${DISP_LABELS[di]}</span>
+            <span class="str-wire" style="height:${wH}px"></span>
+            <span class="str-open-note">${DISP_OPEN[di]}</span>`;
+        el.appendChild(label);
+    }
+}
+
+function toggleStr(di, val) {
+    strOn[di] = val;
+    document.getElementById(`scb-${di}`).closest('label').classList.toggle('checked', val);
+    if (currentNote) showDots(currentNote, false);
+}
+
+function setAllStr(val) {
+    for (let i = 0; i < 6; i++) strOn[i] = val;
+    buildStringSel();
+    if (currentNote) showDots(currentNote, false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MOBILE TOGGLE
+// ═══════════════════════════════════════════════════════════════════════
+function toggleOpts() {
+    const body    = document.getElementById('opts-body');
+    const toggle  = document.getElementById('opts-toggle');
+    const chevron = document.getElementById('opts-chevron');
+    const isOpen  = body.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    chevron.className = isOpen ? 'fa-solid fa-chevron-up arr' : 'fa-solid fa-chevron-down arr';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════════════════
+let synth = null;
+
+async function ensureSynth() {
+    await Tone.start();
+    if (!synth) {
+        synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.01, decay: 0.4, sustain: 0.18, release: 1.0 }
+        }).toDestination();
+        synth.volume.value = -10;
+    }
+}
+
+function playSingleNote(midiNote) {
+    if (!synth) return;
+    synth.triggerAttackRelease(Tone.Frequency(midiNote, 'midi').toFrequency(), '8n');
+}
+
+function playAllPositions(noteName) {
+    if (!synth) return;
+    const semi = NOTE_TO_SEMI[noteName];
+    if (semi === undefined) return;
+    const now = Tone.now();
+    let i = 0;
+    for (let mi = 0; mi < 6; mi++) {
+        if (!strEnabled(mi)) continue;
+        const open = OPEN_MIDI[mi];
+        const scanStart = FR_START === 0 ? 0 : FR_START;
+        for (let f = scanStart; f <= FR_END; f++) {
+            if ((open + f) % 12 === semi) {
+                synth.triggerAttackRelease(
+                    Tone.Frequency(open + f, 'midi').toFrequency(), '8n', now + i * 0.055
+                );
+                i++; break;
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════════════════════
+let rafId = null, timeoutId = null, timerOnDone = null;
+let timerStart = 0, timerDur = 0;
+
+function startTimer(durSec, onDone) {
+    stopTimer();
+    timerOnDone = onDone;
+    const bar = document.getElementById('timer-fill');
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+    void bar.offsetWidth;
+    bar.style.transition = `width ${durSec}s linear`;
+    bar.style.width = '0%';
+    timerStart = performance.now();
+    timerDur   = durSec * 1000;
+    tickLabel();
+    timeoutId = setTimeout(() => { timerOnDone && timerOnDone(); timerOnDone = null; }, durSec * 1000);
+}
+
+function tickLabel() {
+    if (!timerOnDone) return;
+    const rem = Math.max(0, Math.ceil((timerDur - (performance.now() - timerStart)) / 1000));
+    const el  = document.getElementById('timer-lbl');
+    if (phase === 'thinking')  el.textContent = `지판에서 찾아보세요 (${rem}초)`;
+    if (phase === 'revealed')  el.textContent = `다음 문제까지 (${rem}초)`;
+    rafId = requestAnimationFrame(tickLabel);
+}
+
+function stopTimer() {
+    if (rafId)      { cancelAnimationFrame(rafId); rafId = null; }
+    if (timeoutId)  { clearTimeout(timeoutId); timeoutId = null; }
+    timerOnDone = null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PHASE
+// ═══════════════════════════════════════════════════════════════════════
+let phase = 'idle';
+
+function setPhase(p) {
+    phase = p;
+    const el   = document.getElementById('phase-badge');
+    const hint = document.getElementById('btn-hint');
+    el.className = 'phase-badge';
+    if (p === 'thinking') {
+        el.classList.add('ph-think');
+        el.innerHTML = '<i class="fa-solid fa-brain fa-xs"></i> 찾는 중...';
+        hint.style.display = 'flex';
+    } else if (p === 'revealed') {
+        el.classList.add('ph-reveal');
+        el.innerHTML = '<i class="fa-solid fa-check fa-xs"></i> 정답 공개!';
+        hint.style.display = 'none';
+    } else {
+        el.classList.add('ph-idle');
+        el.innerHTML = '<i class="fa-solid fa-pause fa-xs"></i> 대기 중';
+        hint.style.display = 'none';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NOTE POOL & RNG
+// ═══════════════════════════════════════════════════════════════════════
+let _rng = Date.now();
+function rand01() {
+    _rng ^= _rng << 13; _rng ^= _rng >> 17; _rng ^= _rng << 5;
+    return ((_rng >>> 0) / 0xFFFFFFFF);
+}
+
+function buildPool() {
+    const p = [...NATURAL];
+    if (document.getElementById('opt-sharp').checked) p.push(...SHARPS);
+    if (document.getElementById('opt-flat').checked)  p.push(...FLATS);
+    return p;
+}
+
+function pickNote(pool, last) {
+    if (!pool.length) return 'C';
+    let n, t = 0;
+    do { n = pool[Math.floor(rand01() * pool.length)]; t++; }
+    while (n === last && t < 20);
+    return n;
+}
+
+function getNum(id, def) {
+    const v = parseFloat(document.getElementById(id).value);
+    return (!isNaN(v) && v >= 0.5) ? Math.min(60, v) : def;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRACTICE FLOW
+// ═══════════════════════════════════════════════════════════════════════
+let isRunning = false, currentNote = null;
+let statCount = 0, statStreak = 0, sessionStart = null, statInterval = null;
+let history = [];
+
+async function togglePractice() {
+    if (isRunning) stopPractice();
+    else { await ensureSynth(); startPractice(); }
+}
+
+function startPractice() {
+    isRunning = true;
+    _rng = (Date.now() & 0xFFFFFFFF) ^ (Math.random() * 0xFFFFFFFF | 0);
+    statCount = 0; statStreak = 0; history = []; sessionStart = Date.now();
+
+    document.getElementById('btn-start').classList.add('stop');
+    document.getElementById('start-icon').className = 'fa-solid fa-stop';
+    document.getElementById('start-lbl').textContent = '멈추기';
+
+    clearInterval(statInterval);
+    statInterval = setInterval(() => {
+        if (!isRunning) { clearInterval(statInterval); return; }
+        document.getElementById('stat-time').textContent =
+            Math.floor((Date.now() - sessionStart) / 1000) + 's';
+    }, 1000);
+
+    nextQuestion();
+}
+
+function stopPractice() {
+    isRunning = false;
+    stopTimer();
+    clearInterval(statInterval);
+    clearDots();
+    currentNote = null;
+    setPhase('idle');
+
+    document.getElementById('btn-start').classList.remove('stop');
+    document.getElementById('start-icon').className = 'fa-solid fa-play';
+    document.getElementById('start-lbl').textContent = '연습 시작';
+    document.getElementById('timer-lbl').textContent = '시작 버튼을 눌러 연습을 시작하세요';
+
+    const bar = document.getElementById('timer-fill');
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+}
+
+function nextQuestion() {
+    if (!isRunning) return;
+    stopTimer(); clearDots();
+
+    currentNote = pickNote(buildPool(), currentNote);
+    statCount++; statStreak++;
+    document.getElementById('stat-count').textContent  = statCount;
+    document.getElementById('stat-streak').textContent = statStreak;
+
+    const nd = document.getElementById('note-display');
+    nd.textContent = currentNote;
+    nd.classList.remove('pop');
+    void nd.offsetWidth;
+    nd.classList.add('pop');
+
+    history.unshift(currentNote);
+    if (history.length > 16) history.pop();
+    renderHistory();
+
+    setPhase('thinking');
+    startTimer(getNum('opt-reveal', 5), reveal);
+}
+
+function reveal() {
+    if (!isRunning) return;
+    setPhase('revealed');
+    showDots(currentNote, true);
+    playAllPositions(currentNote);
+    startTimer(getNum('opt-next', 3), nextQuestion);
+}
+
+function hintReveal() {
+    if (phase !== 'thinking') return;
+    stopTimer();
+    reveal();
+}
+
+function renderHistory() {
+    const el = document.getElementById('history-wrap');
+    el.innerHTML = '';
+    history.forEach((n, i) => {
+        const p = document.createElement('div');
+        p.className = 'hist-pill';
+        p.style.opacity = Math.max(0.2, 1 - i * 0.07);
+        p.textContent = n;
+        el.appendChild(p);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (!isRunning)            togglePractice();
+        else if (phase === 'thinking')  hintReveal();
+        else if (phase === 'revealed') { stopTimer(); nextQuestion(); }
+    }
+    if (e.code === 'KeyH' && isRunning) hintReveal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESIZE: rebuild fretboard if window size changes
+// ═══════════════════════════════════════════════════════════════════════
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        buildFretboard(FR_START, FR_END);
+        if (currentNote) showDots(currentNote, false);
+    }, 250);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+// Default: mobile → 1-12 range, desktop → full 0-24
+(function init() {
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+        FR_START = 1; FR_END = 12;
+        document.querySelectorAll('.fr-btn').forEach(b => {
+            b.classList.toggle('sel', +b.dataset.s === 1 && +b.dataset.e === 12);
+        });
+    }
+    buildFretboard(FR_START, FR_END);
+    buildStringSel();
+})();
+</script>
+</body>
+</html>

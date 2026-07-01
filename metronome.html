@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정밀 메트로놈 — Guitar Practice Hub</title>
+    <meta name="description" content="Web Audio API 기반 정밀 메트로놈. 탭 템포, 박자 선택, 세분음표 지원.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg:#070a14; --surface:#0e1420; --card:rgba(14,20,32,.9);
+            --border:rgba(255,255,255,.07); --text:#f3f4f6; --muted:#6b7280;
+            --amber:#f59e0b; --amber-light:#fcd34d; --amber-dim:rgba(245,158,11,.15);
+            --green:#10b981; --red:#ef4444;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Inter','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+        /* BG */
+        .bg-orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+        .o1{width:500px;height:500px;background:rgba(245,158,11,.09);top:-150px;right:-100px;}
+        .o2{width:400px;height:400px;background:rgba(99,102,241,.07);bottom:-100px;left:-100px;}
+
+        /* Header */
+        header{position:relative;z-index:10;background:rgba(7,10,20,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+        .hdr{max-width:860px;margin:0 auto;padding:.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+        .back{display:flex;align-items:center;gap:.5rem;color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .2s;}
+        .back:hover{color:var(--text);}
+        .page-title{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+        .page-title i{color:var(--amber);}
+
+        /* Main */
+        main{flex:1;position:relative;z-index:1;max-width:860px;margin:0 auto;width:100%;padding:2rem 1.5rem 5rem;}
+
+        /* Top area */
+        .top{text-align:center;margin-bottom:3rem;}
+        .top h1{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:900;letter-spacing:-.03em;margin-bottom:.4rem;}
+        .top p{color:var(--muted);font-size:.875rem;}
+
+        /* ── Dial ── */
+        .dial-wrap{position:relative;width:280px;height:280px;margin:0 auto 2.5rem;}
+        #dial-canvas{display:block;width:100%;height:100%;}
+
+        /* BPM display */
+        .bpm-display{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
+        .bpm-num{font-size:4rem;font-weight:900;letter-spacing:-.04em;line-height:1;color:var(--text);}
+        .bpm-label{font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:.2rem;}
+        .tempo-name{font-size:.78rem;font-weight:600;color:var(--amber);margin-top:.3rem;}
+
+        /* ── Beat dots ── */
+        .beat-dots{display:flex;justify-content:center;gap:.6rem;margin-bottom:2.5rem;}
+        .dot{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.1);transition:background .08s,box-shadow .08s;}
+        .dot.active{background:var(--amber);border-color:var(--amber);box-shadow:0 0 14px rgba(245,158,11,.8);}
+        .dot.accent{background:var(--amber-light);border-color:var(--amber-light);box-shadow:0 0 20px rgba(252,211,77,.9);transform:scale(1.15);}
+
+        /* ── Controls ── */
+        .controls{display:flex;flex-direction:column;gap:1.5rem;}
+
+        /* BPM slider */
+        .slider-row{display:flex;align-items:center;gap:1rem;}
+        .slider-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:48px;flex-shrink:0;}
+        input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--amber);border:2px solid #fff;box-shadow:0 2px 8px rgba(245,158,11,.5);transition:transform .15s;}
+        input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+        .slider-val{font-size:.9rem;font-weight:700;width:36px;text-align:right;color:var(--text);}
+
+        /* Buttons row */
+        .btn-row{display:flex;gap:.75rem;flex-wrap:wrap;}
+        .btn{padding:.75rem 1.4rem;border-radius:12px;border:none;font-family:inherit;font-size:.875rem;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem;}
+        .btn-play{background:var(--amber);color:#1a1000;flex:1;}
+        .btn-play:hover{background:var(--amber-light);}
+        .btn-play.playing{background:#ef4444;color:#fff;}
+        .btn-play.playing:hover{background:#f87171;}
+        .btn-tap{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;flex:1;}
+        .btn-tap:hover{background:rgba(99,102,241,.28);}
+        .btn-tap:active{transform:scale(.96);background:rgba(99,102,241,.4);}
+
+        /* Options grid */
+        .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+        @media(max-width:480px){.options-grid{grid-template-columns:1fr;}}
+
+        .opt-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.4rem;}
+        .opt-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.8rem;}
+        .opt-btns{display:flex;flex-wrap:wrap;gap:.4rem;}
+        .opt-btn{padding:.4rem .8rem;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;}
+        .opt-btn:hover{border-color:rgba(245,158,11,.35);color:var(--text);}
+        .opt-btn.sel{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+
+        /* Info bar */
+        .info-bar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.4rem;display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:var(--muted);}
+        .info-bar i{color:var(--amber);}
+
+        /* Visual pulse ring */
+        .pulse-ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--amber);opacity:0;transform:scale(.85);pointer-events:none;}
+        .pulse-ring.fire{animation:ring-pulse .15s ease-out forwards;}
+        @keyframes ring-pulse{0%{opacity:.9;transform:scale(.85);}100%{opacity:0;transform:scale(1.12);}}
+    </style>
+</head>
+<body>
+    <div class="bg-orb o1"></div>
+    <div class="bg-orb o2"></div>
+
+    <header>
+        <div class="hdr">
+            <a class="back" href="index.html"><i class="fa-solid fa-arrow-left"></i> 허브로 돌아가기</a>
+            <div class="page-title"><i class="fa-solid fa-stopwatch"></i> 정밀 메트로놈</div>
+        </div>
+    </header>
+
+    <main>
+        <div class="top">
+            <h1>정밀 메트로놈</h1>
+            <p>Web Audio API 기반 · 탭 템포 · 박자 &amp; 세분음표 선택</p>
+        </div>
+
+        <!-- Dial -->
+        <div class="dial-wrap" id="dial-wrap">
+            <canvas id="dial-canvas" width="560" height="560"></canvas>
+            <div class="bpm-display">
+                <div class="bpm-num" id="bpm-num">120</div>
+                <div class="bpm-label">BPM</div>
+                <div class="tempo-name" id="tempo-name">Moderato</div>
+            </div>
+            <div class="pulse-ring" id="pulse-ring"></div>
+        </div>
+
+        <!-- Beat dots -->
+        <div class="beat-dots" id="beat-dots"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <!-- BPM Slider -->
+            <div class="slider-row">
+                <span class="slider-label">BPM</span>
+                <input type="range" id="bpm-slider" min="40" max="240" value="120">
+                <span class="slider-val" id="bpm-val">120</span>
+            </div>
+
+            <!-- Buttons -->
+            <div class="btn-row">
+                <button class="btn btn-play" id="btn-play" onclick="togglePlay()">
+                    <i class="fa-solid fa-play" id="play-icon"></i>
+                    <span id="play-label">재생</span>
+                </button>
+                <button class="btn btn-tap" id="btn-tap" onclick="tapTempo()">
+                    <i class="fa-solid fa-hand-pointer"></i> 탭 템포
+                </button>
+            </div>
+
+            <!-- Options -->
+            <div class="options-grid">
+                <!-- Time Sig -->
+                <div class="opt-card">
+                    <div class="opt-label">박자 (Time Signature)</div>
+                    <div class="opt-btns" id="ts-btns">
+                        <button class="opt-btn" onclick="setTimeSig(2)" data-ts="2">2/4</button>
+                        <button class="opt-btn sel" onclick="setTimeSig(4)" data-ts="4">4/4</button>
+                        <button class="opt-btn" onclick="setTimeSig(3)" data-ts="3">3/4</button>
+                        <button class="opt-btn" onclick="setTimeSig(6)" data-ts="6">6/8</button>
+                    </div>
+                </div>
+
+                <!-- Subdivision -->
+                <div class="opt-card">
+                    <div class="opt-label">세분음표 (Subdivision)</div>
+                    <div class="opt-btns" id="sub-btns">
+                        <button class="opt-btn sel" onclick="setSubdivision(1)" data-sub="1">♩ 4분</button>
+                        <button class="opt-btn" onclick="setSubdivision(2)" data-sub="2">♪ 8분</button>
+                        <button class="opt-btn" onclick="setSubdivision(4)" data-sub="4">♬ 16분</button>
+                        <button class="opt-btn" onclick="setSubdivision(3)" data-sub="3">♩³ 3연</button>
+                    </div>
+                </div>
+
+                <!-- Sound -->
+                <div class="opt-card">
+                    <div class="opt-label">클릭 소리</div>
+                    <div class="opt-btns" id="sound-btns">
+                        <button class="opt-btn sel" onclick="setSound('sine')" data-sound="sine">사인파</button>
+                        <button class="opt-btn" onclick="setSound('square')" data-sound="square">사각파</button>
+                        <button class="opt-btn" onclick="setSound('woodblock')" data-sound="woodblock">우드블록</button>
+                    </div>
+                </div>
+
+                <!-- Volume -->
+                <div class="opt-card">
+                    <div class="opt-label">볼륨</div>
+                    <div class="slider-row" style="gap:.6rem;">
+                        <i class="fa-solid fa-volume-low" style="color:var(--muted);font-size:.8rem;"></i>
+                        <input type="range" id="vol-slider" min="0" max="100" value="80" style="flex:1;">
+                        <span class="slider-val" id="vol-val">80</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-bar">
+                <i class="fa-solid fa-circle-info"></i>
+                탭 템포: 버튼을 2회 이상 탭하면 BPM이 자동 계산됩니다. 오디오는 클릭 후 시작됩니다.
+            </div>
+        </div>
+    </main>
+
+<script>
+// ── Audio Context ──────────────────────────────────────────────────────────
+let audioCtx = null;
+
+function ensureCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let bpm = 120, beatsPerMeasure = 4, subdivision = 1, soundType = 'sine', volume = 0.8;
+let isPlaying = false, nextNoteTime = 0, currentBeat = 0, currentSub = 0;
+let timerID = null;
+
+const LOOK_AHEAD = 25.0;   // ms
+const SCHEDULE_AHEAD = 0.1; // s
+
+function getBeatDuration() { return 60.0 / bpm; }
+function getSubInterval() { return getBeatDuration() / subdivision; }
+
+// ── Scheduler ─────────────────────────────────────────────────────────────
+function scheduler() {
+    while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD) {
+        scheduleNote(currentBeat, currentSub, nextNoteTime);
+        advance();
+    }
+    timerID = setTimeout(scheduler, LOOK_AHEAD);
+}
+
+function advance() {
+    nextNoteTime += getSubInterval();
+    currentSub++;
+    if (currentSub >= subdivision) {
+        currentSub = 0;
+        currentBeat = (currentBeat + 1) % beatsPerMeasure;
+    }
+}
+
+function scheduleNote(beat, sub, time) {
+    const isAccent = (beat === 0 && sub === 0);
+    const isBeat   = (sub === 0);
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    let freq, duration;
+    if (soundType === 'woodblock') {
+        freq = isAccent ? 1000 : isBeat ? 800 : 600;
+        duration = 0.04;
+        osc.type = 'sine';
+    } else {
+        freq = isAccent ? 1760 : isBeat ? 880 : 440;
+        duration = 0.05;
+        osc.type = soundType;
+    }
+
+    osc.frequency.value = freq;
+    const vol = volume * (isAccent ? 1.0 : isBeat ? 0.75 : 0.5);
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+    osc.start(time);
+    osc.stop(time + duration + 0.01);
+
+    // Visual feedback - schedule via timeout
+    const delay = Math.max(0, (time - audioCtx.currentTime) * 1000);
+    setTimeout(() => {
+        if (!isPlaying) return;
+        updateBeatDisplay(beat, sub, isAccent, isBeat);
+        if (isBeat) firePulse(isAccent);
+    }, delay);
+}
+
+// ── Visual ─────────────────────────────────────────────────────────────────
+function buildBeatDots() {
+    const el = document.getElementById('beat-dots');
+    el.innerHTML = '';
+    for (let i = 0; i < beatsPerMeasure; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot';
+        d.id = `dot-${i}`;
+        el.appendChild(d);
+    }
+}
+
+function updateBeatDisplay(beat, sub, isAccent, isBeat) {
+    document.querySelectorAll('.dot').forEach((d, i) => {
+        d.classList.remove('active', 'accent');
+        if (i === beat) {
+            if (isAccent) d.classList.add('accent');
+            else d.classList.add('active');
+        }
+    });
+}
+
+const pulseRing = document.getElementById('pulse-ring');
+function firePulse(isAccent) {
+    pulseRing.classList.remove('fire');
+    void pulseRing.offsetWidth; // reflow
+    pulseRing.style.borderColor = isAccent ? '#fcd34d' : '#f59e0b';
+    pulseRing.classList.add('fire');
+}
+
+// ── Dial ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('dial-canvas');
+const ctx2d = canvas.getContext('2d');
+
+function drawDial(bpmVal) {
+    const W = canvas.width, H = canvas.height, cx = W/2, cy = H/2;
+    const R = W * .45;
+    ctx2d.clearRect(0, 0, W, H);
+
+    // Track
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, R, 0, Math.PI*2);
+    ctx2d.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx2d.lineWidth = 18;
+    ctx2d.stroke();
+
+    // Progress arc: 40..240 mapped to angle
+    const startAngle = -Math.PI * .75;
+    const endFullAngle = Math.PI * .75;
+    const progress = (bpmVal - 40) / (240 - 40);
+    const progAngle = startAngle + progress * (endFullAngle - startAngle + Math.PI * .5);
+
+    const grad = ctx2d.createLinearGradient(cx - R, cy, cx + R, cy);
+    grad.addColorStop(0, '#f59e0b');
+    grad.addColorStop(1, '#fcd34d');
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, R, startAngle, startAngle + progress * (Math.PI * 1.5));
+    ctx2d.strokeStyle = grad;
+    ctx2d.lineWidth = 18;
+    ctx2d.lineCap = 'round';
+    ctx2d.stroke();
+
+    // Tick marks
+    for (let i = 0; i <= 20; i++) {
+        const angle = startAngle + (i / 20) * Math.PI * 1.5;
+        const isMajor = i % 5 === 0;
+        const innerR = R - (isMajor ? 24 : 16);
+        const outerR = R + 8;
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx + innerR * Math.cos(angle), cy + innerR * Math.sin(angle));
+        ctx2d.lineTo(cx + outerR * Math.cos(angle), cy + outerR * Math.sin(angle));
+        ctx2d.strokeStyle = isMajor ? 'rgba(245,158,11,.5)' : 'rgba(255,255,255,.1)';
+        ctx2d.lineWidth = isMajor ? 2.5 : 1.5;
+        ctx2d.stroke();
+    }
+
+    // Knob dot
+    const knobAngle = startAngle + progress * Math.PI * 1.5;
+    const kx = cx + R * Math.cos(knobAngle);
+    const ky = cy + R * Math.sin(knobAngle);
+    ctx2d.beginPath();
+    ctx2d.arc(kx, ky, 10, 0, Math.PI*2);
+    ctx2d.fillStyle = '#fcd34d';
+    ctx2d.shadowColor = 'rgba(252,211,77,.8)';
+    ctx2d.shadowBlur = 15;
+    ctx2d.fill();
+    ctx2d.shadowBlur = 0;
+}
+
+// ── BPM ────────────────────────────────────────────────────────────────────
+const tempoNames = [
+    [40,'Grave'],[60,'Largo'],[66,'Larghetto'],[72,'Adagio'],
+    [80,'Andante'],[92,'Andantino'],[108,'Moderato'],[120,'Allegretto'],
+    [132,'Allegro'],[160,'Vivace'],[176,'Presto'],[200,'Prestissimo']
+];
+function getTempoName(b) {
+    let name = tempoNames[0][1];
+    for (const [threshold, n] of tempoNames) { if (b >= threshold) name = n; }
+    return name;
+}
+
+function setBPM(val) {
+    bpm = Math.max(40, Math.min(240, val));
+    document.getElementById('bpm-slider').value = bpm;
+    document.getElementById('bpm-val').textContent = bpm;
+    document.getElementById('bpm-num').textContent = bpm;
+    document.getElementById('tempo-name').textContent = getTempoName(bpm);
+    drawDial(bpm);
+}
+
+document.getElementById('bpm-slider').addEventListener('input', e => setBPM(+e.target.value));
+
+// Dial drag
+let isDragging = false, dragStartY = 0, dragStartBpm = 120;
+const dialWrap = document.getElementById('dial-wrap');
+dialWrap.style.cursor = 'ns-resize';
+dialWrap.addEventListener('mousedown', e => { isDragging = true; dragStartY = e.clientY; dragStartBpm = bpm; });
+window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const delta = Math.round((dragStartY - e.clientY) / 2);
+    setBPM(dragStartBpm + delta);
+});
+window.addEventListener('mouseup', () => isDragging = false);
+dialWrap.addEventListener('wheel', e => { e.preventDefault(); setBPM(bpm + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+
+// ── Volume ─────────────────────────────────────────────────────────────────
+document.getElementById('vol-slider').addEventListener('input', e => {
+    volume = e.target.value / 100;
+    document.getElementById('vol-val').textContent = e.target.value;
+});
+
+// ── Play / Stop ────────────────────────────────────────────────────────────
+function togglePlay() {
+    ensureCtx();
+    if (isPlaying) stopMetronome();
+    else startMetronome();
+}
+
+function startMetronome() {
+    isPlaying = true;
+    currentBeat = 0;
+    currentSub = 0;
+    nextNoteTime = audioCtx.currentTime + 0.1;
+    scheduler();
+    const btn = document.getElementById('btn-play');
+    btn.classList.add('playing');
+    document.getElementById('play-icon').className = 'fa-solid fa-stop';
+    document.getElementById('play-label').textContent = '정지';
+}
+
+function stopMetronome() {
+    isPlaying = false;
+    clearTimeout(timerID);
+    document.querySelectorAll('.dot').forEach(d => d.classList.remove('active','accent'));
+    const btn = document.getElementById('btn-play');
+    btn.classList.remove('playing');
+    document.getElementById('play-icon').className = 'fa-solid fa-play';
+    document.getElementById('play-label').textContent = '재생';
+}
+
+// ── Tap Tempo ─────────────────────────────────────────────────────────────
+let tapTimes = [];
+function tapTempo() {
+    const now = performance.now();
+    tapTimes.push(now);
+    if (tapTimes.length > 8) tapTimes.shift();
+    if (tapTimes.length >= 2) {
+        const diffs = [];
+        for (let i = 1; i < tapTimes.length; i++) diffs.push(tapTimes[i] - tapTimes[i-1]);
+        const avg = diffs.reduce((a,b)=>a+b,0) / diffs.length;
+        setBPM(Math.round(60000 / avg));
+    }
+    // Dim tap history after 2s
+    clearTimeout(tapTimes._timer);
+    tapTimes._timer = setTimeout(() => { tapTimes = []; }, 2000);
+}
+
+// ── Time Sig & Subdivision ──────────────────────────────────────────────────
+function setTimeSig(n) {
+    beatsPerMeasure = n;
+    document.querySelectorAll('#ts-btns .opt-btn').forEach(b => b.classList.toggle('sel', +b.dataset.ts === n));
+    buildBeatDots();
+    if (isPlaying) { stopMetronome(); startMetronome(); }
+}
+
+function setSubdivision(n) {
+    subdivision = n;
+    document.querySelectorAll('#sub-btns .opt-btn').forEach(b => b.classList.toggle('sel', +b.dataset.sub === n));
+    if (isPlaying) { stopMetronome(); startMetronome(); }
+}
+
+function setSound(t) {
+    soundType = t;
+    document.querySelectorAll('#sound-btns .opt-btn').forEach(b => b.classList.toggle('sel', b.dataset.sound === t));
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowUp') setBPM(bpm + (e.shiftKey ? 10 : 1));
+    if (e.code === 'ArrowDown') setBPM(bpm - (e.shiftKey ? 10 : 1));
+    if (e.code === 'KeyT') tapTempo();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+buildBeatDots();
+drawDial(bpm);
+</script>
+</body>
+</html>

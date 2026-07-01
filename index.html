@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chris의 Guitar 연습실</title>
+    <meta name="description" content="트라이어드 보이싱, 스케일 파인더, 메트로놈, TAB 플레이어, 코드 진행, 지판 음 찾기까지 — Chris의 기타 연습 도구 모음.">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ══════════════════════════════════════════════════════════════════
+           VINTAGE PALETTE
+           ══════════════════════════════════════════════════════════════════ */
+        :root {
+            --ink:       #1a1208;          /* deep espresso */
+            --paper:     #f5ede0;          /* aged parchment */
+            --cream:     #faf4e8;          /* lighter parchment */
+            --sepia:     #c8a96e;          /* warm gold */
+            --sepia-d:   #a07840;          /* darker gold */
+            --rust:      #b84c2a;          /* vintage rust/red */
+            --rust-d:    #8b3419;
+            --fern:      #4a6741;          /* aged green */
+            --indigo:    #2d3a6b;          /* classic navy */
+            --amber:     #d4820a;          /* antique amber */
+            --smoke:     rgba(26,18,8,.06);
+            --border-v:  rgba(200,169,110,.35);
+            --text:      #2e1f0e;          /* warm dark brown */
+            --muted:     #7a5c3a;          /* warm mid-brown */
+            --muted-lt:  #a8896a;          /* lighter warm brown */
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BASE
+           ══════════════════════════════════════════════════════════════════ */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body {
+            font-family:'Inter','Noto Sans KR',sans-serif;
+            background: var(--cream);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           BACKGROUND TEXTURE  (pure CSS grain + vignette)
+           ══════════════════════════════════════════════════════════════════ */
+        body::before {
+            content:'';
+            position:fixed; inset:0; z-index:0; pointer-events:none;
+            /* Fine grain noise via repeating gradient */
+            background-image:
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+                radial-gradient(ellipse 90% 80% at 50% 0%, rgba(212,180,120,.12) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 60% at 0% 100%, rgba(184,76,42,.06) 0%, transparent 60%);
+            mix-blend-mode: multiply;
+        }
+        /* Horizontal ruling lines (vintage ledger paper) */
+        body::after {
+            content:'';
+            position:fixed; inset:0; z-index:0; pointer-events:none;
+            background-image:
+                repeating-linear-gradient(
+                    transparent,
+                    transparent 39px,
+                    rgba(200,169,110,.10) 39px,
+                    rgba(200,169,110,.10) 40px
+                );
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           HEADER / NAV
+           ══════════════════════════════════════════════════════════════════ */
+        header {
+            position: sticky; top:0; z-index:100;
+            background: rgba(245,237,224,.92);
+            backdrop-filter: blur(16px);
+            border-bottom: 2px solid var(--sepia-d);
+            box-shadow: 0 2px 12px rgba(26,18,8,.12);
+        }
+        /* Double-rule accent */
+        header::after {
+            content:'';
+            display:block;
+            height:1px;
+            background: var(--sepia);
+            opacity:.5;
+            margin-top:-1px;
+        }
+        .hdr {
+            max-width:1180px; margin:0 auto;
+            padding:.7rem 1.5rem;
+            display:flex; align-items:center; justify-content:space-between; gap:1rem;
+        }
+
+        /* Logo */
+        .logo { display:flex; align-items:center; gap:.75rem; text-decoration:none; color:var(--text); }
+        .logo-emblem {
+            width:42px; height:42px;
+            background: var(--rust);
+            border-radius:4px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:20px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 3px 10px rgba(184,76,42,.45);
+            border: 1px solid var(--rust-d);
+            position:relative;
+            flex-shrink:0;
+        }
+        .logo-emblem::after {
+            content:'';
+            position:absolute; inset:2px;
+            border:1px solid rgba(255,255,255,.2);
+            border-radius:2px;
+            pointer-events:none;
+        }
+        .logo-name {
+            font-family:'Playfair Display', serif;
+            font-size:1.1rem; font-weight:700;
+            letter-spacing:.01em;
+            line-height:1.2;
+        }
+        .logo-sub { font-size:.65rem; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+
+        /* Nav links */
+        nav { display:flex; gap:.15rem; flex-wrap:wrap; }
+        nav a {
+            padding:.38rem .8rem;
+            color:var(--muted); text-decoration:none;
+            font-size:.76rem; font-weight:500; letter-spacing:.02em;
+            border-radius:3px;
+            border: 1px solid transparent;
+            transition:all .2s;
+        }
+        nav a:hover {
+            color:var(--rust);
+            background: rgba(184,76,42,.06);
+            border-color: rgba(184,76,42,.2);
+        }
+        @media(max-width:640px){ nav{display:none;} }
+
+        /* ══════════════════════════════════════════════════════════════════
+           MAIN WRAPPER
+           ══════════════════════════════════════════════════════════════════ */
+        main { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:0 1.5rem 5rem; }
+
+        /* ══════════════════════════════════════════════════════════════════
+           HERO
+           ══════════════════════════════════════════════════════════════════ */
+        .hero {
+            text-align:center;
+            padding: 5rem 1rem 3.5rem;
+            position:relative;
+        }
+
+        /* Decorative ornamental dividers */
+        .ornament {
+            display:flex; align-items:center; justify-content:center;
+            gap:.75rem; margin-bottom:1.6rem;
+            color:var(--sepia-d);
+        }
+        .ornament::before, .ornament::after {
+            content:'';
+            flex:1; max-width:120px;
+            height:1px;
+            background: linear-gradient(90deg, transparent, var(--sepia-d), transparent);
+        }
+        .ornament span { font-size:.9rem; letter-spacing:.08em; }
+
+        /* Byline above title */
+        .hero-byline {
+            font-family:'Libre Baskerville', serif;
+            font-style:italic;
+            font-size:.85rem;
+            color:var(--muted);
+            letter-spacing:.04em;
+            margin-bottom:1rem;
+            display:block;
+        }
+
+        /* Main title */
+        .hero h1 {
+            font-family:'Playfair Display', serif;
+            font-weight:900;
+            font-size: clamp(2.8rem, 9vw, 6.2rem);
+            line-height:1.0;
+            letter-spacing:-.02em;
+            color:var(--ink);
+            margin-bottom:.5rem;
+            position:relative;
+        }
+        .hero h1 .name-highlight {
+            color:var(--rust);
+            display:block;
+            font-style:italic;
+        }
+        .hero h1 .subtitle-line {
+            display:block;
+            font-size: clamp(1.6rem, 5vw, 3.2rem);
+            font-weight:400;
+            letter-spacing:.08em;
+            color:var(--sepia-d);
+            text-transform:uppercase;
+            font-style:normal;
+            margin-top:.2rem;
+        }
+
+        /* Subtitle / tagline */
+        .hero-tagline {
+            font-family:'Libre Baskerville', serif;
+            font-size: clamp(.9rem, 2vw, 1.1rem);
+            color:var(--muted);
+            max-width:520px; margin:1.6rem auto 2.2rem;
+            line-height:1.8;
+        }
+
+        /* Stats row */
+        .hero-meta {
+            display:flex; align-items:center; justify-content:center;
+            gap:1.5rem; flex-wrap:wrap;
+            font-size:.78rem; color:var(--muted-lt);
+            font-family:'Libre Baskerville', serif;
+            font-style:italic;
+        }
+        .hero-meta-item { display:flex; align-items:center; gap:.4rem; }
+        .hero-meta-item i { color:var(--sepia-d); }
+
+        /* Bottom ornament below hero */
+        .section-rule {
+            display:flex; align-items:center; gap:1rem;
+            margin:3.5rem 0 2.2rem;
+        }
+        .section-rule::before, .section-rule::after {
+            content:''; flex:1;
+            border-top:1px solid var(--border-v);
+        }
+        .section-rule-inner {
+            display:flex; align-items:center; gap:.6rem;
+            color:var(--sepia-d);
+        }
+        .section-rule-inner span {
+            font-family:'Playfair Display', serif;
+            font-size:.8rem; font-weight:700;
+            letter-spacing:.18em; text-transform:uppercase;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           SECTION HEADER
+           ══════════════════════════════════════════════════════════════════ */
+        .sec-eyebrow {
+            font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+            color:var(--sepia-d); margin-bottom:.3rem;
+            font-family:'Inter', sans-serif;
+        }
+        .sec-title {
+            font-family:'Playfair Display', serif;
+            font-size:1.7rem; font-weight:700; letter-spacing:-.01em;
+            color:var(--ink); margin-bottom:.4rem;
+        }
+        .sec-desc { color:var(--muted); font-size:.87rem; margin-bottom:2rem; }
+
+        /* ══════════════════════════════════════════════════════════════════
+           CARD GRID
+           ══════════════════════════════════════════════════════════════════ */
+        .grid {
+            display:grid;
+            grid-template-columns:repeat(auto-fill, minmax(min(310px,100%), 1fr));
+            gap:1.25rem;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           CARD
+           ══════════════════════════════════════════════════════════════════ */
+        .card {
+            background: rgba(255,252,245,.85);
+            border: 1px solid var(--border-v);
+            border-radius: 6px;
+            padding: 1.5rem 1.6rem;
+            text-decoration:none; color:var(--text);
+            display:flex; flex-direction:column; gap:.8rem;
+            position:relative; overflow:hidden;
+            backdrop-filter:blur(6px);
+            box-shadow: 0 2px 8px rgba(26,18,8,.07), inset 0 1px 0 rgba(255,255,255,.8);
+            opacity:0; transform:translateY(22px);
+            animation:cardIn .55s ease forwards;
+            transition:transform .3s ease, box-shadow .3s ease, border-color .3s;
+        }
+        /* Top accent bar */
+        .card::before {
+            content:'';
+            position:absolute; top:0; left:0; right:0; height:3px;
+            background:var(--accent-color, var(--sepia));
+            opacity:.85;
+        }
+        /* Corner ornaments */
+        .card::after {
+            content:'';
+            position:absolute; bottom:0; right:0;
+            width:40px; height:40px;
+            background:
+                linear-gradient(135deg, transparent 50%, rgba(200,169,110,.12) 50%);
+            pointer-events:none;
+        }
+        .card:hover {
+            transform:translateY(-4px);
+            box-shadow:
+                0 12px 40px rgba(26,18,8,.14),
+                0 4px 12px rgba(26,18,8,.08),
+                inset 0 1px 0 rgba(255,255,255,.9);
+            border-color:var(--accent-color, var(--sepia));
+        }
+        @keyframes cardIn { to {opacity:1; transform:translateY(0);} }
+        .c1{animation-delay:.07s;} .c2{animation-delay:.16s;} .c3{animation-delay:.25s;}
+        .c4{animation-delay:.34s;} .c5{animation-delay:.43s;} .c6{animation-delay:.52s;}
+
+        /* Card header */
+        .card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
+        .icon {
+            width:46px; height:46px; border-radius:5px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:19px; flex-shrink:0;
+            border:1px solid rgba(0,0,0,.06);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+        }
+        .cbadge {
+            font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+            padding:.2rem .6rem; border-radius:2px;
+            border:1px solid currentColor; opacity:.75;
+        }
+
+        /* Card body */
+        .ctitle {
+            font-family:'Playfair Display', serif;
+            font-size:1.08rem; font-weight:700;
+            line-height:1.25; color:var(--ink);
+        }
+        .cdesc {
+            font-size:.83rem; color:var(--muted);
+            line-height:1.7; flex:1;
+        }
+
+        /* Tags */
+        .tags { display:flex; flex-wrap:wrap; gap:.3rem; }
+        .tag {
+            font-size:.63rem; font-family:'Inter',sans-serif;
+            padding:.16rem .5rem; border-radius:2px;
+            background:rgba(200,169,110,.12);
+            border:1px solid rgba(200,169,110,.3);
+            color:var(--muted);
+        }
+
+        /* Footer */
+        .cfoot {
+            display:flex; align-items:center; justify-content:space-between;
+            padding-top:.85rem;
+            border-top:1px solid rgba(200,169,110,.25);
+            margin-top:auto;
+        }
+        .cbtn {
+            display:inline-flex; align-items:center; gap:.4rem;
+            font-size:.78rem; font-weight:600;
+            padding:.45rem .9rem; border-radius:3px;
+            border:1px solid var(--accent-color, var(--sepia));
+            color:var(--accent-color, var(--sepia-d));
+            background:rgba(200,169,110,.06);
+            transition:all .2s;
+            font-family:'Inter',sans-serif;
+        }
+        .card:hover .cbtn {
+            background:var(--accent-color, var(--sepia));
+            color:#fff;
+            gap:.6rem;
+        }
+        .badge-new {
+            font-size:.58rem; font-weight:700; letter-spacing:.06em;
+            color:var(--fern);
+            border:1px solid rgba(74,103,65,.3);
+            padding:.18rem .5rem; border-radius:2px;
+            background:rgba(74,103,65,.08);
+        }
+        .badge-star {
+            font-size:.58rem; color:var(--amber);
+            border:1px solid rgba(212,130,10,.3);
+            padding:.18rem .5rem; border-radius:2px;
+            background:rgba(212,130,10,.08);
+        }
+
+        /* ── Color themes ──────────────────────────────────────────────── */
+        .t-rust   { --accent-color:#b84c2a; }
+        .t-rust .icon   { background:rgba(184,76,42,.1); color:#b84c2a; }
+        .t-rust .cbadge { color:#b84c2a; }
+
+        .t-fern   { --accent-color:#4a6741; }
+        .t-fern .icon   { background:rgba(74,103,65,.1); color:#4a6741; }
+        .t-fern .cbadge { color:#4a6741; }
+
+        .t-amber  { --accent-color:#c47a0a; }
+        .t-amber .icon  { background:rgba(212,130,10,.1); color:#c47a0a; }
+        .t-amber .cbadge{ color:#c47a0a; }
+
+        .t-indigo { --accent-color:#2d3a6b; }
+        .t-indigo .icon { background:rgba(45,58,107,.1); color:#2d3a6b; }
+        .t-indigo .cbadge{color:#2d3a6b; }
+
+        .t-sepia  { --accent-color:#a07840; }
+        .t-sepia .icon  { background:rgba(160,120,64,.1); color:#a07840; }
+        .t-sepia .cbadge{ color:#a07840; }
+
+        .t-navy   { --accent-color:#1d3557; }
+        .t-navy .icon   { background:rgba(29,53,87,.1); color:#1d3557; }
+        .t-navy .cbadge { color:#1d3557; }
+
+        .featured {
+            border-color:rgba(184,76,42,.35) !important;
+            background:linear-gradient(145deg,rgba(255,252,245,.95),rgba(255,248,236,.85)) !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           VINTAGE STAMP / FOOTER DECORATION
+           ══════════════════════════════════════════════════════════════════ */
+        .vintage-stamp {
+            display:inline-flex; flex-direction:column; align-items:center; gap:.3rem;
+            border:3px double var(--border-v);
+            padding:1rem 1.8rem;
+            border-radius:4px;
+            position:relative;
+        }
+        .stamp-top {
+            font-family:'Playfair Display', serif;
+            font-size:.68rem; letter-spacing:.22em; text-transform:uppercase;
+            color:var(--sepia-d);
+        }
+        .stamp-mid {
+            font-family:'Playfair Display', serif;
+            font-size:1.4rem; font-weight:900;
+            color:var(--rust); letter-spacing:.04em;
+        }
+        .stamp-bot {
+            font-size:.6rem; letter-spacing:.18em; text-transform:uppercase;
+            color:var(--muted-lt);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           FOOTER
+           ══════════════════════════════════════════════════════════════════ */
+        footer {
+            position:relative; z-index:1;
+            border-top: 1px solid var(--border-v);
+            padding:2.5rem 1.5rem 2rem;
+            text-align:center;
+        }
+        .footer-inner {
+            max-width:1180px; margin:0 auto;
+            display:flex; flex-direction:column; align-items:center; gap:1.25rem;
+        }
+        .footer-copy {
+            font-size:.74rem; color:var(--muted-lt);
+            font-family:'Libre Baskerville', serif; font-style:italic;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           MOBILE
+           ══════════════════════════════════════════════════════════════════ */
+        @media(max-width:640px){
+            main{padding:0 .9rem 4rem;}
+            .hero{padding:3rem .5rem 2rem;}
+            .hero h1{font-size:clamp(2.2rem,13vw,3.2rem);}
+            .section-rule{margin:2.5rem 0 1.5rem;}
+            .grid{gap:1rem;}
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+<header>
+    <div class="hdr">
+        <a class="logo" href="index.html">
+            <div class="logo-emblem">🎸</div>
+            <div>
+                <div class="logo-name">Chris의 Guitar 연습실</div>
+                <div class="logo-sub">나만의 기타 훈련 공간</div>
+            </div>
+        </a>
+        <nav>
+            <a href="triad-shell.html"><i class="fa-solid fa-guitar fa-xs"></i> Triad</a>
+            <a href="scale-finder.html"><i class="fa-solid fa-music fa-xs"></i> Scale</a>
+            <a href="metronome.html"><i class="fa-solid fa-clock fa-xs"></i> Metro</a>
+            <a href="note-finder.html"><i class="fa-solid fa-location-crosshairs fa-xs"></i> Note</a>
+        </nav>
+    </div>
+</header>
+
+<!-- ══ MAIN ════════════════════════════════════════════════════════════ -->
+<main>
+
+    <!-- ── HERO ──────────────────────────────────────────────────────── -->
+    <section class="hero">
+
+        <div class="ornament">
+            <span>✦ &nbsp; ✦ &nbsp; ✦</span>
+        </div>
+
+        <span class="hero-byline">— Personal Practice Studio —</span>
+
+        <h1>
+            <span class="name-highlight">Chris의</span>
+            Guitar
+            <span class="subtitle-line">연습실</span>
+        </h1>
+
+        <p class="hero-tagline">
+            트라이어드 보이싱, 스케일 탐색, 메트로놈,<br>
+            TAB 플레이어, 코드 진행, 지판 음 찾기까지 —<br>
+            모든 연습 도구를 한 곳에서.
+        </p>
+
+        <div class="hero-meta">
+            <span class="hero-meta-item"><i class="fa-solid fa-check-circle fa-xs"></i> 완전 무료</span>
+            <span class="hero-meta-item"><i class="fa-solid fa-check-circle fa-xs"></i> 설치 없음</span>
+            <span class="hero-meta-item"><i class="fa-solid fa-check-circle fa-xs"></i> 오디오 지원</span>
+            <span class="hero-meta-item"><i class="fa-solid fa-check-circle fa-xs"></i> 모바일 지원</span>
+        </div>
+    </section>
+
+    <!-- ── SECTION DIVIDER ────────────────────────────────────────────── -->
+    <div class="section-rule">
+        <div class="section-rule-inner">
+            <i class="fa-solid fa-guitar fa-xs" style="color:var(--sepia-d);"></i>
+            <span>Practice Tools</span>
+            <i class="fa-solid fa-guitar fa-xs" style="color:var(--sepia-d);transform:scaleX(-1);"></i>
+        </div>
+    </div>
+
+    <!-- ── TOOLS SECTION ─────────────────────────────────────────────── -->
+    <section>
+        <div class="sec-eyebrow">연습 도구 모음</div>
+        <h2 class="sec-title">도구를 선택하세요</h2>
+        <p class="sec-desc">카드를 클릭해 바로 시작하세요. 모든 도구는 브라우저에서 즉시 실행됩니다.</p>
+
+        <div class="grid">
+
+            <!-- 1. Triad & Shell -->
+            <a href="triad-shell.html" class="card t-rust featured c1">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-guitar"></i></div>
+                    <span class="cbadge">코드 학습</span>
+                </div>
+                <div class="ctitle">Triad &amp; Shell Voicing Master</div>
+                <div class="cdesc">트라이어드와 7th 쉘 보이싱을 지판 위에서 실시간 분석. 근음·코드 타입·스트링 세트·전위를 조합하고 오디오로 즉시 확인.</div>
+                <div class="tags">
+                    <span class="tag">지판 시각화</span><span class="tag">스트럼/아르페지오</span>
+                    <span class="tag">12개 근음</span><span class="tag">maj7·7·m7</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                    <span class="badge-star">★ 핵심 도구</span>
+                </div>
+            </a>
+
+            <!-- 2. Scale Finder -->
+            <a href="scale-finder.html" class="card t-fern c2">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-music"></i></div>
+                    <span class="cbadge">음계 탐색</span>
+                </div>
+                <div class="ctitle">Scale Finder</div>
+                <div class="cdesc">메이저, 마이너, 펜타토닉, 블루스, 모드 스케일을 전체 지판에 색상으로 시각화. 인터벌별 색상 코딩으로 음계 구조를 직관적으로 파악.</div>
+                <div class="tags">
+                    <span class="tag">15+ 스케일</span><span class="tag">지판 시각화</span>
+                    <span class="tag">인터벌 표시</span><span class="tag">음 이름 표시</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                    <span class="badge-new">NEW</span>
+                </div>
+            </a>
+
+            <!-- 3. Metronome -->
+            <a href="metronome.html" class="card t-amber c3">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-stopwatch"></i></div>
+                    <span class="cbadge">리듬 훈련</span>
+                </div>
+                <div class="ctitle">정밀 메트로놈</div>
+                <div class="cdesc">Web Audio API 기반의 정밀 메트로놈. 박자, 세분음표, 강세를 커스터마이즈하고 탭 템포로 빠르게 BPM을 맞추세요.</div>
+                <div class="tags">
+                    <span class="tag">40–240 BPM</span><span class="tag">탭 템포</span>
+                    <span class="tag">2/4·3/4·4/4·6/8</span><span class="tag">세분음표</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                    <span class="badge-new">NEW</span>
+                </div>
+            </a>
+
+            <!-- 4. Chord Progression -->
+            <a href="chord-progression.html" class="card t-indigo c4">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-sliders"></i></div>
+                    <span class="cbadge">코드 진행</span>
+                </div>
+                <div class="ctitle">Chord Progression Player</div>
+                <div class="cdesc">ii-V-I, I-IV-V, 12마디 블루스, 팝 진행 등을 자동 재생. 키를 선택하고 코드 변환 타이밍에 맞춰 연습하세요.</div>
+                <div class="tags">
+                    <span class="tag">ii-V-I (Jazz)</span><span class="tag">12Bar Blues</span>
+                    <span class="tag">I-IV-V-I</span><span class="tag">BPM 조절</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                    <span class="badge-new">NEW</span>
+                </div>
+            </a>
+
+            <!-- 5. TAB Player -->
+            <a href="tab-player.html" class="card t-sepia c5">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-table-columns"></i></div>
+                    <span class="cbadge">악보 연주</span>
+                </div>
+                <div class="ctitle">TAB Player</div>
+                <div class="cdesc">C→B 코드 진행 TAB을 인터랙티브하게 재생. BPM을 조절하고 반복 재생으로 프레이즈를 집중 연습하세요.</div>
+                <div class="tags">
+                    <span class="tag">BPM 조절</span><span class="tag">반복 재생</span>
+                    <span class="tag">셋잇단음표</span><span class="tag">TAB 표시</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                </div>
+            </a>
+
+            <!-- 6. Note Finder -->
+            <a href="note-finder.html" class="card t-navy c6">
+                <div class="card-top">
+                    <div class="icon"><i class="fa-solid fa-location-crosshairs"></i></div>
+                    <span class="cbadge">지판 훈련</span>
+                </div>
+                <div class="ctitle">지판 음 찾기 연습</div>
+                <div class="cdesc">랜덤 계이름이 주어지면 24프렛 지판에서 위치를 찾는 훈련. N초 후 정답이 지판에 표시되고 소리가 재생됩니다.</div>
+                <div class="tags">
+                    <span class="tag">24프렛</span><span class="tag">6줄 선택</span>
+                    <span class="tag">타이머</span><span class="tag">#/♭ 옵션</span>
+                </div>
+                <div class="cfoot">
+                    <span class="cbtn"><i class="fa-solid fa-arrow-right fa-xs"></i> 시작하기</span>
+                    <span class="badge-new">NEW</span>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- ── BOTTOM RULE ────────────────────────────────────────────────── -->
+    <div class="section-rule" style="margin-top:3.5rem;margin-bottom:2.5rem;">
+        <div class="section-rule-inner">
+            <span style="font-size:.7rem;letter-spacing:.22em;">✦ &nbsp; ✦ &nbsp; ✦</span>
+        </div>
+    </div>
+
+    <!-- ── VINTAGE STAMP ─────────────────────────────────────────────── -->
+    <div style="display:flex;justify-content:center;padding-bottom:1rem;">
+        <div class="vintage-stamp">
+            <div class="stamp-top">Est. 2025</div>
+            <div class="stamp-mid">Chris's Studio</div>
+            <div class="stamp-bot">Guitar Practice · Seoul, Korea</div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════ -->
+<footer>
+    <div class="footer-inner">
+        <p class="footer-copy">
+            Chris의 Guitar 연습실 &copy; 2025 &nbsp;·&nbsp;
+            모든 도구는 브라우저에서 실행됩니다. 오디오는 Web Audio API / Tone.js를 사용합니다.
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

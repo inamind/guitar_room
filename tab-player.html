@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C → B Guitar TAB Player</title>
+  <style>
+    :root { --bg:#111827; --card:#1f2937; --text:#f9fafb; --muted:#9ca3af; --accent:#fbbf24; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #374151 0, var(--bg) 46%);
+      color: var(--text); min-height: 100vh; display: grid; place-items: center;
+    }
+    .wrap { width: min(920px, 94vw); }
+    .card {
+      background: rgba(31,41,55,.92); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 22px; padding: 24px; box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(24px, 4vw, 40px); }
+    p { color: var(--muted); line-height: 1.55; }
+    .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin: 20px 0; }
+    button {
+      border:0; border-radius: 999px; padding: 12px 18px; cursor:pointer; font-weight:700;
+      background: var(--accent); color: #1f2937; font-size: 16px;
+    }
+    button.secondary { background:#374151; color:var(--text); border:1px solid rgba(255,255,255,.14); }
+    label { display:flex; gap:8px; align-items:center; color:var(--muted); }
+    input[type=range] { width: 170px; }
+    .tab {
+      overflow-x:auto; background:#020617; border-radius:16px; padding:18px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: clamp(16px, 2.7vw, 24px);
+      line-height:1.35; white-space:pre; border:1px solid rgba(255,255,255,.08);
+    }
+    .bar { display:flex; justify-content:space-between; gap:16px; margin-top:16px; flex-wrap:wrap; }
+    .pill { background:#111827; padding:10px 12px; border-radius:14px; color:#d1d5db; }
+    .now { color: var(--accent); font-weight:800; }
+    .note { font-size: 14px; color: var(--muted); margin-top:16px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <a href="index.html" style="color:var(--muted); text-decoration:none; display:inline-block; margin-bottom:16px; font-size:14px;">← 허브로 돌아가기</a>
+      <h1>C → B Guitar TAB Player</h1>
+      <p>
+        이미지에 보이는 TAB을 기준으로, 괄호의 3은 첫 3개 세로줄에만 적용되는 셋잇단음표입니다. 즉 X → 음 → X가 한 박자 안에 들어가고, 마지막 음은 그 다음 한 박자 전체를 차지합니다.
+      </p>
+
+      <div class="controls">
+        <button id="play">▶ 재생</button>
+        <button id="stop" class="secondary">■ 정지</button>
+        <label>BPM <input id="bpm" type="range" min="50" max="180" value="96"><span id="bpmValue">96</span></label>
+        <label><input id="loop" type="checkbox" checked> 반복</label>
+      </div>
+
+      <div class="tab" id="tab">    C                         B
+e|--------------------------------------|
+B|--x--13--x--13----------x--12--x--12--|
+G|--x---x--x---x----------x---x--x---x--|
+D|--x--10--x--10----------x---9--x---9--|
+A|--------------------------------------|
+E|--------------------------------------|
+   │   │   │              │   │   │
+   └─── 3 ───┘            └─── 3 ───┘</div>
+
+      <div class="bar">
+        <div class="pill">현재 코드: <span id="chord" class="now">대기</span></div>
+        <div class="pill">패턴: <span>첫 3개 = 셋잇단 1박, 마지막 = 1박</span></div>
+      </div>
+
+      <div class="note">
+        기준 튜닝: 1번줄 e4, 2번줄 B3, 3번줄 G3, 4번줄 D3, 5번줄 A2, 6번줄 E2. 화면에는 기타줄 6개를 모두 표시했고, 실제 소리는 첨부 이미지 기준 2~4번줄에서 냅니다. 셋잇단음표 괄호는 각 코드의 첫 세 이벤트, 즉 X → 음 → X 아래에 표시했습니다.
+        실제 악보의 줄 위치가 다르면 HTML 안의 <code>openMidi</code> 값만 바꾸면 됩니다.
+      </div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  const playBtn = document.getElementById("play");
+  const stopBtn = document.getElementById("stop");
+  const bpmEl = document.getElementById("bpm");
+  const bpmValue = document.getElementById("bpmValue");
+  const loopEl = document.getElementById("loop");
+  const chordEl = document.getElementById("chord");
+
+  let ctx = null;
+  let timers = [];
+  let isPlaying = false;
+
+  // 보이는 TAB 3줄 기준: e, B, G
+  // MIDI: e4=64, B3=59, G3=55
+  const openMidi = { e: 64, B: 59, G: 55 };
+
+  // 이미지 기준 사용 줄은 2, 3, 4번줄 = B, G, D.
+  // 괄호의 3은 첫 3개 세로줄에만 적용.
+  // 0, 1/3, 2/3 위치의 세 음이 셋잇단 1박이고, 마지막 음은 다음 1박 전체.
+  const score = [
+    { chord: "C", events: [
+      { atBeat: 0,      durationBeat: 1 / 3, muted: true,  notes: [] },
+      { atBeat: 1 / 3,  durationBeat: 1 / 3, muted: false, notes: [{ string:"B", fret:13 }, { string:"D", fret:10 }] },
+      { atBeat: 2 / 3,  durationBeat: 1 / 3, muted: true,  notes: [] },
+      { atBeat: 1,      durationBeat: 1,     muted: false, notes: [{ string:"B", fret:13 }, { string:"D", fret:10 }] }
+    ]},
+    { chord: "B", events: [
+      { atBeat: 0,      durationBeat: 1 / 3, muted: true,  notes: [] },
+      { atBeat: 1 / 3,  durationBeat: 1 / 3, muted: false, notes: [{ string:"B", fret:12 }, { string:"D", fret:9 }] },
+      { atBeat: 2 / 3,  durationBeat: 1 / 3, muted: true,  notes: [] },
+      { atBeat: 1,      durationBeat: 1,     muted: false, notes: [{ string:"B", fret:12 }, { string:"D", fret:9 }] }
+    ]}
+  ];
+
+  function midiToHz(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function pluck(freq, when, duration = 0.85) {
+    // Karplus-Strong 느낌의 짧은 기타 플럭
+    const sr = ctx.sampleRate;
+    const length = Math.max(2, Math.round(sr / freq));
+    const buffer = ctx.createBuffer(1, Math.floor(sr * duration), sr);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length && i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = length; i < data.length; i++) {
+      data[i] = 0.497 * (data[i - length] + data[i - length + 1]);
+      data[i] *= Math.pow(0.9985, i / length);
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(0.28, when + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2600, when);
+    filter.frequency.exponentialRampToValueAtTime(900, when + duration);
+
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(when);
+    src.stop(when + duration + 0.05);
+  }
+
+  function mutedStrum(when, duration = 0.12) {
+    // 손바닥/왼손 뮤트 느낌: 짧은 노이즈 + 빠른 감쇠 + 대역 제한
+    const sr = ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, Math.floor(sr * duration), sr);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < data.length; i++) {
+      const decay = Math.pow(1 - i / data.length, 2.2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = "bandpass";
+    bandpass.frequency.setValueAtTime(1450, when);
+    bandpass.Q.setValueAtTime(1.15, when);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(0.20, when + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+
+    src.connect(bandpass).connect(gain).connect(ctx.destination);
+    src.start(when);
+    src.stop(when + duration + 0.02);
+  }
+
+
+  function playNoteGroup(group, when, duration = 0.85) {
+    group.forEach((n, idx) => {
+      const midi = openMidi[n.string] + n.fret;
+      // 아주 미세한 시간차로 기타 스트럼 느낌
+      pluck(midiToHz(midi), when + idx * 0.012, duration);
+    });
+  }
+
+  function clearTimers() {
+    timers.forEach(clearTimeout);
+    timers = [];
+  }
+
+  function stop() {
+    isPlaying = false;
+    clearTimers();
+    chordEl.textContent = "정지";
+  }
+
+  function scheduleOnce(startTime) {
+    const bpm = Number(bpmEl.value);
+    const beat = 60 / bpm;
+    let t = startTime;
+
+    score.forEach(section => {
+      section.events.forEach((beatEvent) => {
+        const when = t + beatEvent.atBeat * beat;
+        timers.push(setTimeout(() => chordEl.textContent = beatEvent.muted ? section.chord + " / mute" : section.chord, Math.max(0, (when - ctx.currentTime) * 1000)));
+        if (beatEvent.muted) mutedStrum(when);
+        if (beatEvent.notes.length) playNoteGroup(beatEvent.notes, when, Math.max(0.18, beatEvent.durationBeat * beat * 1.6));
+      });
+
+      // 한 코드 패턴 전체 길이: 2박자.
+      t += beat * 2;
+    });
+
+    return t - startTime;
+  }
+
+  async function play() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") await ctx.resume();
+
+    stop();
+    isPlaying = true;
+
+    const run = () => {
+      if (!isPlaying) return;
+      const duration = scheduleOnce(ctx.currentTime + 0.08);
+      timers.push(setTimeout(() => {
+        if (loopEl.checked && isPlaying) run();
+        else {
+          isPlaying = false;
+          chordEl.textContent = "완료";
+        }
+      }, (duration + 0.15) * 1000));
+    };
+    run();
+  }
+
+  bpmEl.addEventListener("input", () => bpmValue.textContent = bpmEl.value);
+  playBtn.addEventListener("click", play);
+  stopBtn.addEventListener("click", stop);
+})();
+</script>
+</body>
+</html>

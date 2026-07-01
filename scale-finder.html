@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scale Finder — Guitar Practice Hub</title>
+    <meta name="description" content="기타 스케일 파인더. 메이저, 마이너, 펜타토닉, 블루스, 모드 스케일을 지판 위에 시각화.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        :root {
+            --bg:#060b14;--surface:#0d1520;--card:rgba(13,21,32,.9);
+            --border:rgba(255,255,255,.07);--text:#f3f4f6;--muted:#6b7280;
+            --green:#10b981;--green-dim:rgba(16,185,129,.15);
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Inter','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+        .bg-orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+        .o1{width:600px;height:600px;background:rgba(16,185,129,.08);top:-150px;left:-150px;}
+        .o2{width:500px;height:500px;background:rgba(124,58,237,.06);bottom:-100px;right:-100px;}
+
+        header{position:relative;z-index:10;background:rgba(6,11,20,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+        .hdr{max-width:1200px;margin:0 auto;padding:.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+        .back{display:flex;align-items:center;gap:.5rem;color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .2s;}
+        .back:hover{color:var(--text);}
+        .page-title{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+        .page-title i{color:var(--green);}
+
+        main{flex:1;position:relative;z-index:1;max-width:1200px;margin:0 auto;width:100%;padding:2rem 1.5rem 5rem;}
+
+        .top{margin-bottom:2rem;}
+        .top h1{font-size:clamp(1.5rem,4vw,2rem);font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem;}
+        .top p{color:var(--muted);font-size:.875rem;}
+
+        /* Two-col layout */
+        .layout{display:grid;grid-template-columns:280px 1fr;gap:1.5rem;align-items:start;}
+        @media(max-width:900px){.layout{grid-template-columns:1fr;}}
+
+        /* Sidebar */
+        .sidebar{display:flex;flex-direction:column;gap:1rem;}
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.25rem 1.4rem;}
+        .panel-title{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.8rem;}
+
+        /* Root buttons */
+        .root-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.3rem;}
+        .root-btn{padding:.45rem .2rem;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+            color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;transition:all .2s;}
+        .root-btn:hover{border-color:rgba(16,185,129,.4);color:var(--text);}
+        .root-btn.sel{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+
+        /* Scale list */
+        .scale-list{display:flex;flex-direction:column;gap:.3rem;max-height:320px;overflow-y:auto;}
+        .scale-list::-webkit-scrollbar{width:4px;}
+        .scale-list::-webkit-scrollbar-track{background:transparent;}
+        .scale-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+        .scale-btn{padding:.55rem .9rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.03);
+            color:var(--muted);font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;transition:all .2s;
+            display:flex;justify-content:space-between;align-items:center;}
+        .scale-btn:hover{border-color:rgba(16,185,129,.35);color:var(--text);}
+        .scale-btn.sel{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+        .scale-notes-count{font-size:.65rem;opacity:.6;}
+
+        /* Display options */
+        .opt-row{display:flex;gap:.4rem;flex-wrap:wrap;}
+        .opt-btn{padding:.35rem .7rem;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+            color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;}
+        .opt-btn:hover{color:var(--text);}
+        .opt-btn.sel{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+
+        /* Audio button */
+        .audio-btn{width:100%;padding:.7rem;border-radius:12px;border:1px solid rgba(16,185,129,.3);
+            background:rgba(16,185,129,.12);color:var(--green);font-size:.85rem;font-weight:700;
+            cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+        .audio-btn:hover{background:rgba(16,185,129,.22);}
+        .audio-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+        /* ── Fretboard ── */
+        .fretboard-wrap{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.5rem;overflow-x:auto;}
+
+        /* Scale info */
+        .scale-info{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;}
+        .scale-name-big{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;}
+        .scale-notes-pills{display:flex;gap:.3rem;flex-wrap:wrap;}
+        .note-pill{padding:.2rem .5rem;border-radius:6px;font-size:.7rem;font-weight:700;}
+
+        /* Fretboard table */
+        .fb{width:100%;border-collapse:collapse;min-width:700px;}
+        .fb td{padding:0;}
+        .string-name{font-size:.7rem;font-weight:700;color:var(--muted);width:28px;text-align:center;padding-right:4px;}
+        .fret-cell{position:relative;width:52px;height:40px;border-right:2px solid rgba(255,255,255,.12);text-align:center;vertical-align:middle;transition:background .15s;}
+        .fret-cell:last-child{border-right:none;}
+        .fret-cell.nut{border-right:5px solid rgba(255,255,255,.35);}
+
+        /* String line */
+        .fret-cell::before{content:'';position:absolute;left:0;right:0;top:50%;height:1.5px;transform:translateY(-50%);}
+        .str-6::before{background:rgba(255,255,255,.25);height:3px;}
+        .str-5::before{background:rgba(255,255,255,.22);height:2.5px;}
+        .str-4::before{background:rgba(255,255,255,.2);height:2px;}
+        .str-3::before{background:rgba(255,255,255,.18);height:1.5px;}
+        .str-2::before{background:rgba(255,255,255,.16);height:1.5px;}
+        .str-1::before{background:rgba(255,255,255,.14);height:1px;}
+
+        /* Dot */
+        .note-dot{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;
+            width:30px;height:30px;border-radius:50%;font-size:.64rem;font-weight:800;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+        .note-dot:hover{transform:scale(1.18);box-shadow:0 0 12px currentColor;}
+
+        /* Interval colors */
+        .i-R{background:#ef4444;color:#fff;box-shadow:0 0 8px rgba(239,68,68,.5);}
+        .i-2{background:#f59e0b;color:#1a0a00;}
+        .i-b2{background:#d97706;color:#fff;}
+        .i-3{background:#10b981;color:#fff;box-shadow:0 0 8px rgba(16,185,129,.4);}
+        .i-b3{background:#06b6d4;color:#fff;}
+        .i-4{background:#6366f1;color:#fff;}
+        .i-s4{background:#8b5cf6;color:#fff;}
+        .i-5{background:#f59e0b;color:#1a0a00;box-shadow:0 0 8px rgba(245,158,11,.4);}
+        .i-b5{background:#f97316;color:#fff;}
+        .i-6{background:#a78bfa;color:#fff;}
+        .i-b6{background:#9333ea;color:#fff;}
+        .i-7{background:#ec4899;color:#fff;}
+        .i-b7{background:#db2777;color:#fff;}
+
+        /* Fret numbers */
+        .fret-nums{display:flex;align-items:center;padding-top:.5rem;}
+        .fret-num-cell{width:52px;text-align:center;font-size:.65rem;color:var(--muted);font-weight:600;}
+        .fret-num-cell.mark{color:var(--green);}
+        .fret-name-cell{width:28px;}
+
+        /* Dot markers on fretboard */
+        .fb-marker{display:block;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.15);margin:0 auto;margin-top:2px;}
+
+        /* Legend */
+        .legend{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);}
+        .legend-item{display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted);}
+        .legend-dot{width:12px;height:12px;border-radius:50%;}
+    </style>
+</head>
+<body>
+    <div class="bg-orb o1"></div>
+    <div class="bg-orb o2"></div>
+
+    <header>
+        <div class="hdr">
+            <a class="back" href="index.html"><i class="fa-solid fa-arrow-left"></i> 허브로 돌아가기</a>
+            <div class="page-title"><i class="fa-solid fa-music"></i> Scale Finder</div>
+        </div>
+    </header>
+
+    <main>
+        <div class="top">
+            <h1>Scale Finder</h1>
+            <p>키와 스케일을 선택하면 지판 전체에 음표가 표시됩니다.</p>
+        </div>
+
+        <div class="layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Root -->
+                <div class="panel">
+                    <div class="panel-title">근음 (Root Note)</div>
+                    <div class="root-grid" id="root-grid"></div>
+                </div>
+
+                <!-- Scale -->
+                <div class="panel">
+                    <div class="panel-title">스케일 타입</div>
+                    <div class="scale-list" id="scale-list"></div>
+                </div>
+
+                <!-- Display -->
+                <div class="panel">
+                    <div class="panel-title">표시 방식</div>
+                    <div class="opt-row" id="display-opts">
+                        <button class="opt-btn sel" data-disp="interval" onclick="setDisplay('interval')">인터벌</button>
+                        <button class="opt-btn" data-disp="note" onclick="setDisplay('note')">음 이름</button>
+                        <button class="opt-btn" data-disp="degree" onclick="setDisplay('degree')">계이름</button>
+                    </div>
+                </div>
+
+                <!-- Fret Range -->
+                <div class="panel">
+                    <div class="panel-title">프렛 범위</div>
+                    <div class="opt-row" id="fret-range-opts">
+                        <button class="opt-btn sel" data-fr="0-12" onclick="setFretRange(0,12)">0–12</button>
+                        <button class="opt-btn" data-fr="5-17" onclick="setFretRange(5,17)">5–17</button>
+                        <button class="opt-btn" data-fr="0-24" onclick="setFretRange(0,24)">0–24</button>
+                    </div>
+                </div>
+
+                <!-- Audio -->
+                <div class="panel">
+                    <div class="panel-title">오디오 재생</div>
+                    <button class="audio-btn" id="play-scale-btn" onclick="playScale()">
+                        <i class="fa-solid fa-play"></i> 스케일 재생
+                    </button>
+                </div>
+            </div>
+
+            <!-- Fretboard -->
+            <div class="fretboard-wrap">
+                <div class="scale-info">
+                    <div class="scale-name-big" id="scale-name-big">C Major</div>
+                    <div class="scale-notes-pills" id="scale-notes-pills"></div>
+                </div>
+                <table class="fb" id="fretboard"></table>
+                <div class="fret-nums" id="fret-nums"></div>
+                <div class="legend" id="legend"></div>
+            </div>
+        </div>
+    </main>
+
+<script>
+// ─── Data ────────────────────────────────────────────────────────────────────
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const SOLFEGE    = ['도','도#','레','레#','미','파','파#','솔','솔#','라','라#','시'];
+
+// String open MIDI: low E to high e
+const OPEN_MIDI  = [40, 45, 50, 55, 59, 64]; // str6..str1
+const STRING_LABELS = ['e','B','G','D','A','E']; // display top to bottom (str1..str6)
+
+const SCALES = [
+    { name:'Major (Ionian)',      intervals:[0,2,4,5,7,9,11],       category:'기본' },
+    { name:'Natural Minor (Aeolian)', intervals:[0,2,3,5,7,8,10],   category:'기본' },
+    { name:'Harmonic Minor',      intervals:[0,2,3,5,7,8,11],       category:'기본' },
+    { name:'Melodic Minor',       intervals:[0,2,3,5,7,9,11],       category:'기본' },
+    { name:'Major Pentatonic',    intervals:[0,2,4,7,9],            category:'펜타토닉' },
+    { name:'Minor Pentatonic',    intervals:[0,3,5,7,10],           category:'펜타토닉' },
+    { name:'Blues',               intervals:[0,3,5,6,7,10],         category:'블루스' },
+    { name:'Dorian',              intervals:[0,2,3,5,7,9,10],       category:'모드' },
+    { name:'Phrygian',            intervals:[0,1,3,5,7,8,10],       category:'모드' },
+    { name:'Lydian',              intervals:[0,2,4,6,7,9,11],       category:'모드' },
+    { name:'Mixolydian',          intervals:[0,2,4,5,7,9,10],       category:'모드' },
+    { name:'Locrian',             intervals:[0,1,3,5,6,8,10],       category:'모드' },
+    { name:'Whole Tone',          intervals:[0,2,4,6,8,10],         category:'특수' },
+    { name:'Diminished (W-H)',    intervals:[0,2,3,5,6,8,9,11],     category:'특수' },
+    { name:'Chromatic',           intervals:[0,1,2,3,4,5,6,7,8,9,10,11], category:'특수' },
+];
+
+const INTERVAL_INFO = {
+    0:  { label:'R',  cls:'i-R',  name:'Root'       },
+    1:  { label:'b2', cls:'i-b2', name:'♭2'         },
+    2:  { label:'2',  cls:'i-2',  name:'장2도'       },
+    3:  { label:'b3', cls:'i-b3', name:'단3도'       },
+    4:  { label:'3',  cls:'i-3',  name:'장3도'       },
+    5:  { label:'4',  cls:'i-4',  name:'완전4도'     },
+    6:  { label:'#4', cls:'i-s4', name:'증4/감5'     },
+    7:  { label:'5',  cls:'i-5',  name:'완전5도'     },
+    8:  { label:'b6', cls:'i-b6', name:'단6도'       },
+    9:  { label:'6',  cls:'i-6',  name:'장6도'       },
+    10: { label:'b7', cls:'i-b7', name:'단7도'       },
+    11: { label:'7',  cls:'i-7',  name:'장7도'       },
+};
+
+const FRET_MARKERS = [3,5,7,9,12,15,17,19,21,24];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let rootNote = 0, scaleIdx = 0, displayMode = 'interval';
+let fretStart = 0, fretEnd = 12;
+let synth = null;
+
+// ─── Build UI ─────────────────────────────────────────────────────────────────
+function buildRootGrid() {
+    const el = document.getElementById('root-grid');
+    NOTE_NAMES.forEach((n, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'root-btn' + (i === rootNote ? ' sel' : '');
+        btn.textContent = n;
+        btn.onclick = () => { rootNote = i; renderAll(); };
+        el.appendChild(btn);
+    });
+}
+
+function updateRootGrid() {
+    document.querySelectorAll('.root-btn').forEach((b, i) => b.classList.toggle('sel', i === rootNote));
+}
+
+function buildScaleList() {
+    const el = document.getElementById('scale-list');
+    let curCat = '';
+    SCALES.forEach((s, i) => {
+        if (s.category !== curCat) {
+            curCat = s.category;
+            const sep = document.createElement('div');
+            sep.style.cssText = 'font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4b5563;margin:.4rem 0 .15rem;padding:0 .4rem;';
+            sep.textContent = curCat;
+            el.appendChild(sep);
+        }
+        const btn = document.createElement('button');
+        btn.className = 'scale-btn' + (i === scaleIdx ? ' sel' : '');
+        btn.innerHTML = `<span>${s.name}</span><span class="scale-notes-count">${s.intervals.length}음</span>`;
+        btn.onclick = () => { scaleIdx = i; updateScaleList(); renderAll(); };
+        el.appendChild(btn);
+    });
+}
+
+function updateScaleList() {
+    document.querySelectorAll('.scale-btn').forEach((b, i) => b.classList.toggle('sel', i === scaleIdx));
+}
+
+function setDisplay(mode) {
+    displayMode = mode;
+    document.querySelectorAll('#display-opts .opt-btn').forEach(b => b.classList.toggle('sel', b.dataset.disp === mode));
+    renderAll();
+}
+
+function setFretRange(s, e) {
+    fretStart = s; fretEnd = e;
+    document.querySelectorAll('#fret-range-opts .opt-btn').forEach(b => b.classList.toggle('sel', b.dataset.fr === `${s}-${e}`));
+    renderAll();
+}
+
+// ─── Fretboard Render ─────────────────────────────────────────────────────────
+function getNoteLabel(midi, interval) {
+    const noteIdx = midi % 12;
+    if (displayMode === 'note') return NOTE_NAMES[noteIdx];
+    if (displayMode === 'degree') return SOLFEGE[interval];
+    return INTERVAL_INFO[interval].label;
+}
+
+function renderFretboard() {
+    const scale = SCALES[scaleIdx];
+    const intervals = scale.intervals;
+    const fb = document.getElementById('fretboard');
+    fb.innerHTML = '';
+
+    // Render strings top (str1=high e) to bottom (str6=low E)
+    for (let strDisplay = 0; strDisplay < 6; strDisplay++) {
+        const strIdx = 5 - strDisplay; // str6..str1 in OPEN_MIDI
+        const openMidi = OPEN_MIDI[strIdx];
+        const tr = document.createElement('tr');
+
+        // String label
+        const labelTd = document.createElement('td');
+        labelTd.className = 'string-name';
+        labelTd.textContent = STRING_LABELS[strDisplay];
+        tr.appendChild(labelTd);
+
+        for (let fret = fretStart; fret <= fretEnd; fret++) {
+            const td = document.createElement('td');
+            const midi = openMidi + fret;
+            const noteIdx = midi % 12;
+            const interval = (noteIdx - rootNote + 12) % 12;
+            const inScale = intervals.includes(interval);
+            const info = INTERVAL_INFO[interval];
+
+            td.className = `fret-cell str-${strDisplay + 1}${fret === 0 ? ' nut' : ''}`;
+
+            if (inScale) {
+                const dot = document.createElement('span');
+                dot.className = `note-dot ${info.cls}`;
+                dot.title = `${NOTE_NAMES[noteIdx]} — ${info.name}`;
+                dot.textContent = getNoteLabel(midi, interval);
+                dot.onclick = () => playNote(midi);
+                td.appendChild(dot);
+            }
+            tr.appendChild(td);
+        }
+        fb.appendChild(tr);
+    }
+
+    // Fret numbers row
+    const fnEl = document.getElementById('fret-nums');
+    fnEl.innerHTML = '<div class="fret-name-cell"></div>';
+    for (let fret = fretStart; fret <= fretEnd; fret++) {
+        const d = document.createElement('div');
+        d.className = 'fret-num-cell' + (FRET_MARKERS.includes(fret) ? ' mark' : '');
+        d.innerHTML = FRET_MARKERS.includes(fret) ? `<b>${fret}</b>` : fret;
+        fnEl.appendChild(d);
+    }
+}
+
+function renderScaleInfo() {
+    const scale = SCALES[scaleIdx];
+    const rootName = NOTE_NAMES[rootNote];
+    document.getElementById('scale-name-big').textContent = `${rootName} ${scale.name}`;
+
+    const pills = document.getElementById('scale-notes-pills');
+    pills.innerHTML = '';
+    scale.intervals.forEach(iv => {
+        const midi = (rootNote + iv + 12) % 12;
+        const p = document.createElement('span');
+        p.className = `note-pill ${INTERVAL_INFO[iv].cls}`;
+        p.textContent = NOTE_NAMES[midi];
+        p.style.padding = '.18rem .45rem';
+        p.style.borderRadius = '6px';
+        p.style.fontSize = '.7rem';
+        p.style.fontWeight = '700';
+        pills.appendChild(p);
+    });
+}
+
+function renderLegend() {
+    const scale = SCALES[scaleIdx];
+    const legend = document.getElementById('legend');
+    legend.innerHTML = '';
+    const seen = new Set();
+    scale.intervals.forEach(iv => {
+        if (seen.has(iv)) return;
+        seen.add(iv);
+        const info = INTERVAL_INFO[iv];
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<div class="legend-dot ${info.cls}" style="width:12px;height:12px;border-radius:50%;"></div> ${info.label} — ${info.name}`;
+        legend.appendChild(item);
+    });
+}
+
+function renderAll() {
+    updateRootGrid();
+    updateScaleList();
+    renderFretboard();
+    renderScaleInfo();
+    renderLegend();
+}
+
+// ─── Audio ─────────────────────────────────────────────────────────────────
+async function ensureSynth() {
+    await Tone.start();
+    if (!synth) {
+        synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.8 }
+        }).toDestination();
+        synth.volume.value = -6;
+    }
+}
+
+async function playNote(midi) {
+    await ensureSynth();
+    const freq = Tone.Frequency(midi, 'midi').toFrequency();
+    synth.triggerAttackRelease(freq, '8n');
+}
+
+async function playScale() {
+    await ensureSynth();
+    const btn = document.getElementById('play-scale-btn');
+    btn.disabled = true;
+
+    const scale = SCALES[scaleIdx];
+    const rootMidi = 48 + rootNote; // C3 = 48
+    const notes = scale.intervals.map(iv => Tone.Frequency(rootMidi + iv, 'midi').toFrequency());
+    notes.push(Tone.Frequency(rootMidi + 12, 'midi').toFrequency()); // octave
+
+    const now = Tone.now();
+    notes.forEach((freq, i) => {
+        synth.triggerAttackRelease(freq, '8n', now + i * 0.3);
+    });
+
+    setTimeout(() => { btn.disabled = false; }, notes.length * 300 + 500);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+buildRootGrid();
+buildScaleList();
+renderAll();
+</script>
+</body>
+</html>

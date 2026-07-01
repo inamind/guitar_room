@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Triad & Shell Voicing Master - 인터랙티브 기타 코드 가이드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js CDN for Web Audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Font (Inter & Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            900: '#4c1d95',
+                        },
+                        degree: {
+                            root: '#ef4444', // 근음 (Red)
+                            third: '#10b981', // 장3도 (Green)
+                            m3rd: '#06b6d4',  // 단3도 (Cyan)
+                            fifth: '#f59e0b', // 완전5도 (Gold)
+                            seventh: '#8b5cf6', // 장7도 (Violet)
+                            flatSeventh: '#ec4899', // 단7도 (Pink)
+                            dimFifth: '#f97316', // 감5도 (Orange)
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        .fretboard-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        .fretboard-scroll::-webkit-scrollbar-track {
+            background: #111827;
+            border-radius: 4px;
+        }
+        .fretboard-scroll::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        .fretboard-scroll::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        .glow-root { box-shadow: 0 0 15px rgba(239, 68, 68, 0.7); }
+        .glow-third { box-shadow: 0 0 15px rgba(16, 185, 129, 0.7); }
+        .glow-m3rd { box-shadow: 0 0 15px rgba(6, 182, 212, 0.7); }
+        .glow-fifth { box-shadow: 0 0 15px rgba(245, 158, 11, 0.7); }
+        .glow-seventh { box-shadow: 0 0 15px rgba(139, 92, 246, 0.75); }
+        .glow-flatSeventh { box-shadow: 0 0 15px rgba(236, 72, 153, 0.75); }
+        .glow-dimFifth { box-shadow: 0 0 15px rgba(249, 115, 22, 0.75); }
+
+        /* Mobile-first refinements: keep the tool readable without horizontal scrolling. */
+        #active-voicing-label,
+        #fret-detail-label {
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                -webkit-text-size-adjust: 100%;
+            }
+            header {
+                position: static;
+            }
+            .fretboard-scroll {
+                overflow-x: visible;
+                padding-bottom: 0.25rem;
+            }
+            #fretboard-canvas-parent {
+                min-width: 100% !important;
+                height: 185px !important;
+            }
+            #fretboard .mobile-fret-window-label {
+                display: block;
+            }
+        }
+
+        @media (max-width: 420px) {
+            #fretboard-canvas-parent {
+                height: 170px !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- HEADER -->
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-50 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex flex-col gap-3">
+                <a href="index.html" class="flex items-center gap-2 text-gray-400 hover:text-white transition-all text-xs font-medium w-fit">
+                    <i class="fa-solid fa-arrow-left"></i> 허브로 돌아가기
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-guitar text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">GUITAR TRIAD & SHELL MASTER</h1>
+                    <p class="text-xs text-gray-400">트라이어드·7th 쉘 보이싱 실시간 분석</p>
+                </div>
+            </div>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <button id="btn-audio-init" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-brand-600 hover:bg-brand-500 active:scale-95 transition-all text-white rounded-lg flex items-center gap-2 shadow-lg shadow-brand-600/30">
+                    <i class="fa-solid fa-volume-high"></i>
+                    <span>오디오 엔진 켜기</span>
+                </button>
+                <div id="audio-status" class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="오디오 비활성화됨"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-5 sm:space-y-8">
+        
+        <!-- INTRO HERO -->
+        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-b from-gray-900 to-gray-950 border border-gray-800 p-4 sm:p-8">
+            <div class="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-80 h-80 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10 max-w-3xl">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-4">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+                    Triad + Shell Voicing Ver.
+                </span>
+                <h2 class="text-xl sm:text-3xl font-black mb-3 text-white">트라이어드와 7th 쉘 보이싱을 함께 보는 지판 학습 도구</h2>
+                <p class="text-gray-400 leading-relaxed text-sm sm:text-base">
+                    기존 트라이어드(R-3-5 / R-b3-5)에 더해, maj7·7·m7·mMaj7 같은 7th 계열을 <b>3음 쉘 보이싱(R/3/7 중심)</b>으로 표현합니다. 5도를 생략한 실전형 보이싱과 실제 연주 가능한 프렛 위치를 자동 계산합니다.
+                </p>
+            </div>
+        </div>
+
+        <!-- TWO COLUMN INTERACTIVE INTERFACE -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
+            
+            <!-- CONTROLS COLUMN (LEFT) -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-4 sm:p-6 space-y-5 sm:space-y-6 shadow-xl">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
+                        <i class="fa-solid fa-sliders text-brand-400"></i>
+                        <span>보이싱 설정기 (Voicing Builder)</span>
+                    </h3>
+                    
+                    <!-- 1. ROOT NOTE SELECTOR -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">근음 선택 (Root Note)</label>
+                        <div id="root-selector" class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                            <!-- JS가 동적으로 노드를 생성합니다 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 2. CHORD TYPE SELECTOR -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">코드 타입 (Triad / Shell Voicing)</label>
+                        <div id="chord-type-selector" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <!-- JS가 동적으로 코드 타입 버튼을 생성합니다 -->
+                        </div>
+                        <p class="text-[11px] text-gray-500 mt-2 leading-relaxed">
+                            Shell Voicing은 보통 5도를 생략하고 <b class="text-gray-300">Root + 3도 + 7도</b>만으로 maj7, 7, m7의 성격을 표현합니다.
+                        </p>
+                    </div>
+                    
+                    <!-- 3. STRING SET SELECTOR -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">스트링 세트 (String Set)</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button id="btn-set-123" class="py-2.5 px-3 rounded-lg font-medium border text-xs bg-brand-600/20 border-brand-500 text-white" onclick="setStringSet('123')">
+                                <span class="block text-[10px] text-gray-400">Top Set</span>
+                                1, 2, 3번줄
+                            </button>
+                            <button id="btn-set-234" class="py-2.5 px-3 rounded-lg font-medium border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white" onclick="setStringSet('234')">
+                                <span class="block text-[10px] text-gray-400">Mid Set</span>
+                                2, 3, 4번줄
+                            </button>
+                            <button id="btn-set-345" class="py-2.5 px-3 rounded-lg font-medium border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white" onclick="setStringSet('345')">
+                                <span class="block text-[10px] text-gray-400">Low-Mid Set</span>
+                                3, 4, 5번줄
+                            </button>
+                            <button id="btn-set-456" class="py-2.5 px-3 rounded-lg font-medium border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white" onclick="setStringSet('456')">
+                                <span class="block text-[10px] text-gray-400">Deep Bass</span>
+                                4, 5, 6번줄
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4. INVERSION SELECTOR -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">전위 상태 (Inversion)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="btn-inv-root" class="py-3 px-2 rounded-xl font-bold border text-xs text-center bg-brand-600/20 border-brand-500 text-white" onclick="setInversion('root')">
+                                <span class="block font-medium text-gray-400 text-[10px] mb-0.5">기본형</span>
+                                Root Position
+                            </button>
+                            <button id="btn-inv-1st" class="py-3 px-2 rounded-xl font-bold border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white" onclick="setInversion('1st')">
+                                <span class="block font-medium text-gray-400 text-[10px] mb-0.5">제1전위</span>
+                                1st Inversion
+                            </button>
+                            <button id="btn-inv-2nd" class="py-3 px-2 rounded-xl font-bold border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white" onclick="setInversion('2nd')">
+                                <span class="block font-medium text-gray-400 text-[10px] mb-0.5">제2전위</span>
+                                2nd Inversion
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PLAYBACK CONTROLS -->
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-6 space-y-4 shadow-xl">
+                    <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-circle-play text-emerald-500"></i>
+                        <span>인터랙티브 플레이어</span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="btn-strum" class="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all font-bold text-white rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+                            <i class="fa-solid fa-bars"></i> 코드 스트럼
+                        </button>
+                        <button id="btn-arpeggio" class="py-3 px-4 bg-cyan-600 hover:bg-cyan-500 active:scale-95 transition-all font-bold text-white rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/20">
+                            <i class="fa-solid fa-waveform-lines"></i> 아르페지오
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DYNAMIC FRETBOARD & THEORY COLUMN (RIGHT) -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- MAIN FRETBOARD CARD -->
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <div class="flex flex-col">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="px-2 py-1 bg-brand-900 text-brand-300 text-xs rounded-md font-bold uppercase tracking-wider" id="active-chord-label">C Major</span>
+                                    <span class="text-gray-400 text-xs leading-relaxed" id="active-voicing-label">Root Position (1 - 3 - 5)</span>
+                                </div>
+                                <!-- REAL FRETS TEXT INDICATOR -->
+                                <span class="text-xs font-semibold text-amber-400 mt-2 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 inline-block w-fit" id="fret-detail-label">
+                                    <i class="fa-solid fa-hand-point-right mr-1"></i>운지 프렛 정보가 로딩 중입니다...
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 text-xs mt-2 sm:mt-0 w-full sm:w-auto">
+                                <button onclick="prevPosition()" class="p-1 px-2.5 rounded-lg border border-gray-800 bg-gray-900 text-gray-400 hover:text-white transition-all">
+                                    <i class="fa-solid fa-chevron-left"></i> 이전 위치
+                                </button>
+                                <span class="text-gray-400 font-medium" id="position-counter">위치 1/1</span>
+                                <button onclick="nextPosition()" class="p-1 px-2.5 rounded-lg border border-gray-800 bg-gray-900 text-gray-400 hover:text-white transition-all">
+                                    다음 위치 <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- DYNAMIC GUITAR FRETBOARD CONTAINER -->
+                        <div class="w-full overflow-x-auto fretboard-scroll pb-2 sm:pb-4">
+                            <div class="relative w-full sm:min-w-[700px] h-[185px] sm:h-56 bg-zinc-900 rounded-xl border border-zinc-800 select-none overflow-hidden" id="fretboard-canvas-parent">
+                                <div id="fretboard" class="absolute inset-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FRETBOARD INSTRUCTION -->
+                    <div class="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-gray-400 border-t border-gray-800/80 pt-4">
+                        <div class="flex items-center gap-x-3 gap-y-2 flex-wrap">
+                            <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-full bg-degree-root inline-block"></span> 근음 (R)</span>
+                            <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-full bg-degree-third inline-block" id="label-third-color"></span> <span id="label-third-text">장3도 (3)</span></span>
+                            <span class="flex items-center gap-1" id="legend-fifth"><span class="w-3.5 h-3.5 rounded-full bg-degree-fifth inline-block" id="label-fifth-color"></span> <span id="label-fifth-text">완전5도 (5)</span></span>
+                            <span class="flex items-center gap-1 hidden" id="legend-seventh"><span class="w-3.5 h-3.5 rounded-full bg-degree-seventh inline-block" id="label-seventh-color"></span> <span id="label-seventh-text">장7도 (7)</span></span>
+                        </div>
+                        <p class="italic text-gray-500"><i class="fa-regular fa-hand-pointer mr-1"></i>지판 위의 노트를 직접 클릭하면 소리가 납니다!</p>
+                    </div>
+                </div>
+
+                <!-- REAL-TIME ANALYSIS TAB -->
+                <div class="bg-gray-950 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+                    <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-nodes text-brand-400"></i>
+                        <span>선택한 보이싱 구성음 정보</span>
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
+                        <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                            <span class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">낮은 줄 (Bass Note)</span>
+                            <span class="text-2xl font-black text-white" id="analysis-bass-note">E</span>
+                            <span class="block text-xs mt-1 text-degree-third" id="analysis-bass-degree">3도음</span>
+                        </div>
+                        <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                            <span class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">가운데 줄 (Middle Note)</span>
+                            <span class="text-2xl font-black text-white" id="analysis-mid-note">G</span>
+                            <span class="block text-xs mt-1 text-degree-fifth" id="analysis-mid-degree">5도음</span>
+                        </div>
+                        <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                            <span class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">높은 줄 (Top Note)</span>
+                            <span class="text-2xl font-black text-white" id="analysis-top-note">C</span>
+                            <span class="block text-xs mt-1 text-degree-root" id="analysis-top-degree">1도음</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHEAT SHEET GRID SECTION -->
+        <section class="bg-gray-950 border border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-6 shadow-2xl">
+            <div class="border-b border-gray-800 pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
+                    <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-rectangle-list text-brand-400"></i>
+                        <span>트라이어드 / 쉘 보이싱 코드 폼</span>
+                    </h3>
+                    
+                    <!-- Root Fret Input Box -->
+                    <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5 shadow-inner w-full sm:w-auto">
+                        <label for="root-fret-input" class="text-xs font-semibold text-gray-400 whitespace-nowrap">
+                            <i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>대표 Root 프렛:
+                        </label>
+                        <input id="root-fret-input" type="number" min="0" max="15" placeholder="미입력" 
+                               class="w-20 bg-gray-950 border border-gray-700 focus:border-brand-500 rounded-lg text-xs font-bold text-center text-amber-400 focus:outline-none py-1 transition-all" 
+                               oninput="renderVisualCheatSheet()">
+                    </div>
+                </div>
+                
+                <!-- ORIENTATION TOGGLER -->
+                <div class="flex bg-gray-900/80 p-1 rounded-xl border border-gray-800 self-stretch md:self-auto shadow-inner">
+                    <button id="btn-orient-horiz" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-brand-600 text-white shadow-lg shadow-brand-600/20" onclick="setOrientation('horizontal')">
+                        <i class="fa-solid fa-arrows-left-right"></i> 가로 보기
+                    </button>
+                    <button id="btn-orient-vert" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-gray-400 hover:text-white" onclick="setOrientation('vertical')">
+                        <i class="fa-solid fa-arrows-up-down"></i> 세로 보기
+                    </button>
+                </div>
+            </div>
+            
+            <p class="text-xs text-gray-400 mt-1">
+                G(3)현과 B(2)현의 튜닝 변조를 100% 반영한 비주얼 격자 가이드라인입니다. 
+                <span class="text-amber-400 font-semibold">대표 Root 프렛을 입력하면 해당 프렛에 가까운 폼을 우선 표시하고, 원 안에는 실제 음이름(C, E, B 등)을 표시합니다. 미입력 시에는 도수(R, 3, b7 등)를 표시합니다.</span>
+                하단에는 현재 선택한 코드타입의 코드폼만 표시됩니다. 개별 카드를 클릭하면 해당 보이싱으로 메인 지판이 전환되고 코드 사운드가 재생됩니다.
+            </p>
+            
+            <div id="cheat-sheet-sections" class="space-y-10">
+                <!-- JS가 트라이어드와 쉘 보이싱 카드 섹션을 동적으로 생성합니다 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-gray-900 bg-black/40 py-6 px-4 text-center text-xs text-gray-500">
+        <p>© 2026 Guitar Triad Master. All rights reserved.</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        
+        // Standard tuning MIDI numbers: String 1 to 6 (E4, B3, G3, D3, A2, E2)
+        const STRING_TUNING_MIDI = [64, 59, 55, 50, 45, 40];
+        const STRING_NAMES = ["E (1st)", "B (2nd)", "G (3rd)", "D (4th)", "A (5th)", "E (6th)"];
+
+        const DEGREE_INTERVALS = {
+            "R": 0,
+            "3": 4,
+            "b3": 3,
+            "5": 7,
+            "b5": 6,
+            "7": 11,
+            "b7": 10
+        };
+
+        const CHORD_TYPES = {
+            major: {
+                label: "Major",
+                symbol: "",
+                formula: "R - 3 - 5",
+                degrees: ["R", "3", "5"],
+                group: "Triad",
+                description: "기본 메이저 트라이어드"
+            },
+            minor: {
+                label: "Minor",
+                symbol: "m",
+                formula: "R - b3 - 5",
+                degrees: ["R", "b3", "5"],
+                group: "Triad",
+                description: "기본 마이너 트라이어드"
+            },
+            maj7: {
+                label: "Maj7 Shell",
+                symbol: "maj7",
+                formula: "R - 3 - 7",
+                degrees: ["R", "3", "7"],
+                group: "Shell",
+                description: "5도 생략 · 밝고 세련된 maj7 색채"
+            },
+            dom7: {
+                label: "7 Shell",
+                symbol: "7",
+                formula: "R - 3 - b7",
+                degrees: ["R", "3", "b7"],
+                group: "Shell",
+                description: "5도 생략 · 블루지/펑키한 도미넌트7"
+            },
+            m7: {
+                label: "m7 Shell",
+                symbol: "m7",
+                formula: "R - b3 - b7",
+                degrees: ["R", "b3", "b7"],
+                group: "Shell",
+                description: "5도 생략 · 부드러운 마이너7"
+            },
+            mMaj7: {
+                label: "m(maj7) Shell",
+                symbol: "m(maj7)",
+                formula: "R - b3 - 7",
+                degrees: ["R", "b3", "7"],
+                group: "Shell",
+                description: "5도 생략 · 마이너 3도 + 메이저 7도"
+            },
+            m7b5: {
+                label: "m7b5 Color Voicing",
+                symbol: "m7b5",
+                formula: "R - b3 - b5",
+                degrees: ["R", "b3", "b5"],
+                group: "Color Voicing",
+                description: "b7 생략 · b5 색깔을 우선한 3음 축약"
+            }
+        };
+
+        const STRING_SET_LABELS = {
+            "123": "1, 2, 3번줄",
+            "234": "2, 3, 4번줄",
+            "345": "3, 4, 5번줄",
+            "456": "4, 5, 6번줄"
+        };
+
+        const INVERSION_LABELS = {
+            root: "기본형",
+            "1st": "제1전위",
+            "2nd": "제2전위"
+        };
+
+        const INVERSION_EN_LABELS = {
+            root: "Root Position",
+            "1st": "1st Inversion",
+            "2nd": "2nd Inversion"
+        };
+
+        const CHEAT_GROUPS = [
+            {
+                title: "트라이어드 / 쉘 보이싱 코드 폼",
+                subtitle: "R/3/5 또는 R/b3/5로 구성되는 기본 3화음",
+                icon: "fa-layer-group",
+                types: ["major", "minor"]
+            },
+            {
+                title: "7th 쉘 보이싱 코드 폼",
+                subtitle: "보통 5도를 생략하고 R/3/7 계열만으로 코드 성격을 표현합니다.",
+                icon: "fa-border-none",
+                types: ["maj7", "dom7", "m7", "mMaj7"]
+            },
+            {
+                title: "Color Voicing 3음 축약 폼",
+                subtitle: "m7b5처럼 5도 변화가 중요한 코드는 b5를 포함한 축약형도 함께 봅니다.",
+                icon: "fa-code-branch",
+                types: ["m7b5"]
+            }
+        ];
+
+        // State Manager
+        let appState = {
+            root: "C",
+            quality: "minor",
+            stringSet: "234",
+            inversion: "2nd",
+            allVoicings: [],
+            selectedVoicingIndex: 0,
+            orientation: "horizontal"
+        };
+
+        // Audio Engine
+        let synth = null;
+        let delayEffect = null;
+        let isAudioInitialized = false;
+
+        function initAudio() {
+            if (isAudioInitialized) return;
+            
+            try {
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sine" },
+                    envelope: {
+                        attack: 0.05,
+                        decay: 0.2,
+                        sustain: 0.4,
+                        release: 1.2
+                    },
+                    volume: -8
+                }).toDestination();
+
+                delayEffect = new Tone.FeedbackDelay("8n.", 0.2).toDestination();
+                delayEffect.wet.value = 0.15;
+                synth.connect(delayEffect);
+
+                isAudioInitialized = true;
+                
+                const statusDot = document.getElementById('audio-status');
+                statusDot.classList.remove('bg-red-500');
+                statusDot.classList.add('bg-emerald-500');
+                statusDot.setAttribute('title', '오디오 활성화됨');
+                
+                document.getElementById('btn-audio-init').classList.add('bg-zinc-800', 'hover:bg-zinc-700');
+                document.getElementById('btn-audio-init').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> 오디오 작동 중';
+                
+                Tone.start();
+                console.log("Tone.js Audio Engine Successfully Initialized");
+            } catch (err) {
+                console.error("Failed to initialize Tone.js: ", err);
+            }
+        }
+
+        document.getElementById('btn-audio-init').addEventListener('click', initAudio);
+
+        function getChordType(key = appState.quality) {
+            return CHORD_TYPES[key] || CHORD_TYPES.major;
+        }
+
+        function getChordSymbol(root = appState.root, quality = appState.quality) {
+            const type = getChordType(quality);
+            return type.symbol ? `${root}${type.symbol}` : `${root} Major`;
+        }
+
+        function getRotationOffset(inversion) {
+            if (inversion === "1st") return 1;
+            if (inversion === "2nd") return 2;
+            return 0;
+        }
+
+        function rotateDegrees(degrees, inversion) {
+            const offset = getRotationOffset(inversion);
+            return degrees.slice(offset).concat(degrees.slice(0, offset));
+        }
+
+        function getDegreeDisplay(degree) {
+            return degree;
+        }
+
+        function getDegreeText(degree) {
+            const textMap = {
+                "R": "근음 (R)",
+                "3": "장3도 (3)",
+                "b3": "단3도 (b3)",
+                "5": "완전5도 (5)",
+                "b5": "감5도 (b5)",
+                "7": "장7도 (7)",
+                "b7": "단7도 (b7)"
+            };
+            return textMap[degree] || degree;
+        }
+
+        function getDegreeBadgeClass(degree) {
+            if (degree === "R") return "bg-red-600 text-white font-black glow-root border-2 border-red-400";
+            if (degree === "3") return "bg-degree-third text-white glow-third";
+            if (degree === "b3") return "bg-degree-m3rd text-white glow-m3rd";
+            if (degree === "5") return "bg-degree-fifth text-slate-950 font-black glow-fifth";
+            if (degree === "b5") return "bg-degree-dimFifth text-white glow-dimFifth";
+            if (degree === "7") return "bg-degree-seventh text-white glow-seventh";
+            if (degree === "b7") return "bg-degree-flatSeventh text-white glow-flatSeventh";
+            return "bg-gray-600 text-white";
+        }
+
+        function getDegreeTextClass(degree) {
+            if (degree === "R") return "text-red-400";
+            if (degree === "3") return "text-emerald-400";
+            if (degree === "b3") return "text-cyan-400";
+            if (degree === "5") return "text-amber-400";
+            if (degree === "b5") return "text-orange-400";
+            if (degree === "7") return "text-violet-400";
+            if (degree === "b7") return "text-pink-400";
+            return "text-gray-300";
+        }
+
+        function getSvgFillClass(degree) {
+            if (degree === "R") return { fill: "fill-red-600", stroke: "stroke-red-300", text: "font-extrabold text-[11px] fill-white", glow: "filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.95));" };
+            if (degree === "3") return { fill: "fill-emerald-500", stroke: "stroke-none", text: "font-black text-[10px] fill-white", glow: "" };
+            if (degree === "b3") return { fill: "fill-cyan-500", stroke: "stroke-none", text: "font-black text-[10px] fill-white", glow: "" };
+            if (degree === "5") return { fill: "fill-amber-500", stroke: "stroke-none", text: "font-bold text-[10px] fill-slate-950", glow: "" };
+            if (degree === "b5") return { fill: "fill-orange-500", stroke: "stroke-none", text: "font-bold text-[10px] fill-white", glow: "" };
+            if (degree === "7") return { fill: "fill-violet-500", stroke: "stroke-none", text: "font-bold text-[10px] fill-white", glow: "" };
+            if (degree === "b7") return { fill: "fill-pink-500", stroke: "stroke-none", text: "font-bold text-[10px] fill-white", glow: "" };
+            return { fill: "fill-gray-500", stroke: "stroke-none", text: "font-bold text-[10px] fill-white", glow: "" };
+        }
+
+        function getActiveStringIndices(stringSetKey) {
+            if (stringSetKey === "123") return [2, 1, 0]; // G, B, E
+            if (stringSetKey === "234") return [3, 2, 1]; // D, G, B
+            if (stringSetKey === "345") return [4, 3, 2]; // A, D, G
+            if (stringSetKey === "456") return [5, 4, 3]; // E, A, D
+            return [3, 2, 1];
+        }
+
+        function calculateVoicingsFor(root, quality, stringSet, inversion) {
+            const rootIndex = NOTES.indexOf(root);
+            const chordType = getChordType(quality);
+            const targetDegrees = rotateDegrees(chordType.degrees, inversion);
+            const targetNotes = targetDegrees.map(degree => (rootIndex + DEGREE_INTERVALS[degree]) % 12);
+            const activeStringIndices = getActiveStringIndices(stringSet);
+            const results = [];
+            const [strA, strB, strC] = activeStringIndices;
+            
+            for (let fA = 0; fA <= 15; fA++) {
+                const noteA = (STRING_TUNING_MIDI[strA] + fA) % 12;
+                if (noteA !== targetNotes[0]) continue;
+
+                for (let fB = Math.max(0, fA - 4); fB <= Math.min(15, fA + 4); fB++) {
+                    const noteB = (STRING_TUNING_MIDI[strB] + fB) % 12;
+                    if (noteB !== targetNotes[1]) continue;
+
+                    for (let fC = Math.max(0, fB - 4); fC <= Math.min(15, fB + 4); fC++) {
+                        const noteC = (STRING_TUNING_MIDI[strC] + fC) % 12;
+                        if (noteC !== targetNotes[2]) continue;
+
+                        const maxFret = Math.max(fA, fB, fC);
+                        const minFret = Math.min(fA, fB, fC);
+                        if (maxFret - minFret <= 4) {
+                            results.push({
+                                root,
+                                quality,
+                                stringSet,
+                                inversion,
+                                strings: [strA, strB, strC],
+                                frets: [fA, fB, fC],
+                                degrees: targetDegrees,
+                                noteNames: [NOTES[noteA], NOTES[noteB], NOTES[noteC]],
+                                midiNotes: [
+                                    STRING_TUNING_MIDI[strA] + fA,
+                                    STRING_TUNING_MIDI[strB] + fB,
+                                    STRING_TUNING_MIDI[strC] + fC
+                                ],
+                                avgFret: (fA + fB + fC) / 3
+                            });
+                        }
+                    }
+                }
+            }
+            
+            results.sort((a, b) => a.avgFret - b.avgFret);
+            return results;
+        }
+
+        function calculateVoicings() {
+            appState.allVoicings = calculateVoicingsFor(appState.root, appState.quality, appState.stringSet, appState.inversion);
+            appState.selectedVoicingIndex = Math.min(appState.selectedVoicingIndex, Math.max(appState.allVoicings.length - 1, 0));
+            if (appState.selectedVoicingIndex < 0) appState.selectedVoicingIndex = 0;
+            updateVisuals();
+        }
+
+        function renderFretboard() {
+            const fretboardEl = document.getElementById("fretboard");
+            fretboardEl.innerHTML = "";
+
+            const activeVoicing = appState.allVoicings[appState.selectedVoicingIndex];
+            const isCompact = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+            const maxFretLimit = 15;
+            let displayStart = 0;
+            let displayEnd = maxFretLimit;
+
+            // On phones, show a local fret window around the selected voicing.
+            // This keeps note badges readable instead of squeezing all 15 frets into the screen width.
+            if (isCompact && activeVoicing) {
+                const minActiveFret = Math.min(...activeVoicing.frets);
+                const maxActiveFret = Math.max(...activeVoicing.frets);
+                displayStart = minActiveFret <= 1 ? 0 : Math.max(1, minActiveFret - 2);
+                displayEnd = Math.min(maxFretLimit, Math.max(displayStart + 6, maxActiveFret + 2));
+                if (displayEnd - displayStart > 7) displayEnd = displayStart + 7;
+                if (displayEnd > maxFretLimit) {
+                    displayEnd = maxFretLimit;
+                    displayStart = Math.max(0, displayEnd - 7);
+                }
+            }
+
+            const displayedFrets = displayEnd - displayStart;
+            const markers = [3, 5, 7, 9, 12, 15];
+
+            if (displayStart > 0) {
+                const windowLabel = document.createElement("div");
+                windowLabel.className = "mobile-fret-window-label hidden absolute top-1 left-2 z-30 text-[10px] font-bold text-amber-300 bg-gray-950/80 border border-amber-500/20 rounded-md px-2 py-0.5";
+                windowLabel.innerText = `${displayStart}F ~ ${displayEnd}F`;
+                fretboardEl.appendChild(windowLabel);
+            }
+
+            const inlaysContainer = document.createElement("div");
+            inlaysContainer.className = "absolute inset-0 flex pointer-events-none";
+
+            for (let step = 0; step <= displayedFrets; step++) {
+                const actualFret = displayStart + step;
+                const fretCol = document.createElement("div");
+                fretCol.className = `flex-1 border-r border-zinc-700/60 relative h-full flex flex-col justify-center items-center ${actualFret === 0 ? 'bg-zinc-950 border-r-4 border-r-amber-600/80 max-w-[28px]' : ''}`;
+
+                if (markers.includes(actualFret)) {
+                    const dot = document.createElement("div");
+                    if (actualFret === 12) {
+                        dot.className = "flex flex-col gap-8 items-center justify-center h-full py-6 absolute";
+                        dot.innerHTML = `
+                            <div class="w-2.5 h-2.5 rounded-full bg-zinc-600/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-zinc-600/80"></div>
+                        `;
+                    } else {
+                        dot.className = "w-2.5 h-2.5 rounded-full bg-zinc-600/80 absolute self-center";
+                    }
+                    fretCol.appendChild(dot);
+                }
+
+                const numSpan = document.createElement("span");
+                numSpan.className = "absolute bottom-1 right-1 sm:right-2 text-[9px] font-semibold text-zinc-600";
+                numSpan.innerText = actualFret;
+                fretCol.appendChild(numSpan);
+
+                inlaysContainer.appendChild(fretCol);
+            }
+            fretboardEl.appendChild(inlaysContainer);
+
+            const stringsContainer = document.createElement("div");
+            stringsContainer.className = "absolute inset-0 flex flex-col justify-between py-5 pointer-events-none";
+
+            for (let s = 0; s < 6; s++) {
+                const stringLine = document.createElement("div");
+                const thickness = 1 + (s * 0.5);
+                stringLine.className = "w-full bg-gradient-to-r from-zinc-500 to-zinc-400 relative shadow-sm";
+                stringLine.style.height = `${thickness}px`;
+                stringLine.style.opacity = 0.85;
+
+                const sName = document.createElement("span");
+                sName.className = "absolute -left-2 -top-1.5 text-[8px] font-black text-zinc-500";
+                sName.innerText = STRING_NAMES[s][0];
+                stringLine.appendChild(sName);
+
+                stringsContainer.appendChild(stringLine);
+            }
+            fretboardEl.appendChild(stringsContainer);
+
+            if (!activeVoicing) return;
+
+            const notesContainer = document.createElement("div");
+            notesContainer.className = "absolute inset-0 flex flex-col justify-between py-5";
+
+            for (let s = 0; s < 6; s++) {
+                const row = document.createElement("div");
+                row.className = "w-full flex items-center relative h-1";
+
+                const activeIndexOnString = activeVoicing.strings.indexOf(s);
+                const activeFret = activeIndexOnString !== -1 ? activeVoicing.frets[activeIndexOnString] : -1;
+
+                for (let step = 0; step <= displayedFrets; step++) {
+                    const actualFret = displayStart + step;
+                    const fretCell = document.createElement("div");
+                    fretCell.className = `flex-1 h-12 -my-6 flex items-center justify-center relative cursor-pointer ${actualFret === 0 ? 'max-w-[28px]' : ''}`;
+                    fretCell.addEventListener('click', () => playIndividualNote(s, actualFret));
+
+                    if (actualFret === activeFret) {
+                        const degree = activeVoicing.degrees[activeIndexOnString];
+                        const noteName = activeVoicing.noteNames[activeIndexOnString];
+                        const colorClass = getDegreeBadgeClass(degree);
+                        const degLabel = getDegreeDisplay(degree);
+
+                        const badge = document.createElement("div");
+                        badge.className = `w-7 h-7 sm:w-8 sm:h-8 rounded-full ${colorClass} flex flex-col items-center justify-center text-[10px] font-black pointer-events-auto shadow-lg z-20 hover:scale-110 active:scale-95 transition-all`;
+                        badge.innerHTML = `
+                            <span class="text-[10px] h-3 leading-none">${noteName}</span>
+                            <span class="text-[8px] h-2 leading-none opacity-90">${degLabel}</span>
+                        `;
+                        fretCell.appendChild(badge);
+                    }
+                    row.appendChild(fretCell);
+                }
+                notesContainer.appendChild(row);
+            }
+            fretboardEl.appendChild(notesContainer);
+        }
+
+        function playIndividualNote(stringIndex, fret) {
+            initAudio();
+            if (!isAudioInitialized) return;
+            
+            const midi = STRING_TUNING_MIDI[stringIndex] + fret;
+            const noteName = Tone.Frequency(midi, "midi").toNote();
+            synth.triggerAttackRelease(noteName, "4n");
+        }
+        
+        function playChordStrum() {
+            initAudio();
+            if (!isAudioInitialized) return;
+            
+            const activeVoicing = appState.allVoicings[appState.selectedVoicingIndex];
+            if (!activeVoicing) return;
+            
+            const now = Tone.now();
+            const notesToPlay = activeVoicing.midiNotes.map((midi, i) => ({ midi, string: activeVoicing.strings[i] }));
+            notesToPlay.sort((a, b) => b.string - a.string);
+            
+            notesToPlay.forEach((item, index) => {
+                const noteName = Tone.Frequency(item.midi, "midi").toNote();
+                synth.triggerAttackRelease(noteName, "2n", now + (index * 0.08));
+            });
+        }
+        
+        function playArpeggio() {
+            initAudio();
+            if (!isAudioInitialized) return;
+            
+            const activeVoicing = appState.allVoicings[appState.selectedVoicingIndex];
+            if (!activeVoicing) return;
+            
+            const now = Tone.now();
+            const notesToPlay = activeVoicing.midiNotes.map((midi, i) => ({ midi, string: activeVoicing.strings[i] }));
+            notesToPlay.sort((a, b) => b.string - a.string);
+            
+            notesToPlay.forEach((item, index) => {
+                const noteName = Tone.Frequency(item.midi, "midi").toNote();
+                synth.triggerAttackRelease(noteName, "4n", now + (index * 0.35));
+            });
+        }
+
+        function setupRootSelector() {
+            const rootSelector = document.getElementById("root-selector");
+            rootSelector.innerHTML = "";
+            
+            NOTES.forEach(note => {
+                const btn = document.createElement("button");
+                btn.id = `btn-root-${note.replace("#", "sharp")}`;
+                btn.className = `py-2 rounded-lg font-bold text-xs border transition-all ${note === appState.root ? 'bg-brand-600 border-brand-500 text-white shadow-lg shadow-brand-600/30' : 'border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white'}`;
+                btn.innerText = note;
+                btn.onclick = () => setRootNote(note);
+                rootSelector.appendChild(btn);
+            });
+        }
+
+        function safeChordKey(key) {
+            return key.replace(/[^a-zA-Z0-9]/g, "-");
+        }
+
+        function setupChordTypeSelector() {
+            const container = document.getElementById("chord-type-selector");
+            if (!container) return;
+            container.innerHTML = "";
+
+            Object.entries(CHORD_TYPES).forEach(([key, type]) => {
+                const btn = document.createElement("button");
+                btn.id = `btn-chord-${safeChordKey(key)}`;
+                const active = key === appState.quality;
+                btn.className = `py-2 px-2 sm:py-2.5 sm:px-3 rounded-xl font-bold border transition-all text-[11px] sm:text-xs flex flex-col items-center justify-center gap-0.5 ${active ? 'bg-brand-600/20 border-brand-500 text-white shadow-inner' : 'border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white hover:bg-gray-900'}`;
+                btn.innerHTML = `
+                    <span class="text-[10px] ${active ? 'text-brand-300' : 'text-gray-500'}">${type.group}</span>
+                    <span>${type.symbol ? appState.root + type.symbol : appState.root}</span>
+                    <span class="text-[9px] font-medium ${active ? 'text-gray-300' : 'text-gray-500'}">${type.formula}</span>
+                `;
+                btn.onclick = () => setChordQuality(key);
+                container.appendChild(btn);
+            });
+        }
+
+        function updateChordLegend() {
+            const type = getChordType();
+            const degrees = type.degrees;
+            const thirdDegree = degrees.includes("b3") ? "b3" : "3";
+
+            const thirdColor = document.getElementById("label-third-color");
+            const thirdText = document.getElementById("label-third-text");
+            if (thirdColor && thirdText) {
+                thirdColor.className = `w-3.5 h-3.5 rounded-full inline-block ${thirdDegree === "b3" ? 'bg-degree-m3rd' : 'bg-degree-third'}`;
+                thirdText.innerText = getDegreeText(thirdDegree);
+            }
+
+            const fifthLegend = document.getElementById("legend-fifth");
+            const fifthColor = document.getElementById("label-fifth-color");
+            const fifthText = document.getElementById("label-fifth-text");
+            const fifthDegree = degrees.includes("b5") ? "b5" : (degrees.includes("5") ? "5" : null);
+            if (fifthLegend && fifthColor && fifthText) {
+                if (fifthDegree) {
+                    fifthLegend.classList.remove("hidden");
+                    fifthColor.className = `w-3.5 h-3.5 rounded-full inline-block ${fifthDegree === "b5" ? 'bg-degree-dimFifth' : 'bg-degree-fifth'}`;
+                    fifthText.innerText = getDegreeText(fifthDegree);
+                } else {
+                    fifthLegend.classList.add("hidden");
+                }
+            }
+
+            const seventhLegend = document.getElementById("legend-seventh");
+            const seventhColor = document.getElementById("label-seventh-color");
+            const seventhText = document.getElementById("label-seventh-text");
+            const seventhDegree = degrees.includes("b7") ? "b7" : (degrees.includes("7") ? "7" : null);
+            if (seventhLegend && seventhColor && seventhText) {
+                if (seventhDegree) {
+                    seventhLegend.classList.remove("hidden");
+                    seventhColor.className = `w-3.5 h-3.5 rounded-full inline-block ${seventhDegree === "b7" ? 'bg-degree-flatSeventh' : 'bg-degree-seventh'}`;
+                    seventhText.innerText = getDegreeText(seventhDegree);
+                } else {
+                    seventhLegend.classList.add("hidden");
+                }
+            }
+        }
+
+        function setRootNote(note) {
+            appState.root = note;
+            setupRootSelector();
+            setupChordTypeSelector();
+            calculateVoicings();
+            renderVisualCheatSheet();
+        }
+
+        function setChordQuality(quality) {
+            if (!CHORD_TYPES[quality]) return;
+            appState.quality = quality;
+            setupChordTypeSelector();
+            updateChordLegend();
+            calculateVoicings();
+            renderVisualCheatSheet();
+        }
+
+        function updateStringSetButtons() {
+            const sets = ['123', '234', '345', '456'];
+            sets.forEach(s => {
+                const btn = document.getElementById(`btn-set-${s}`);
+                if (!btn) return;
+                if (s === appState.stringSet) {
+                    btn.className = "py-2 px-2 sm:py-2.5 sm:px-3 rounded-lg font-medium border text-[11px] sm:text-xs bg-brand-600/20 border-brand-500 text-white shadow-inner";
+                } else {
+                    btn.className = "py-2 px-2 sm:py-2.5 sm:px-3 rounded-lg font-medium border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white";
+                }
+            });
+        }
+
+        function setStringSet(set) {
+            appState.stringSet = set;
+            updateStringSetButtons();
+            calculateVoicings();
+        }
+
+        function updateInversionButtons() {
+            const invs = ['root', '1st', '2nd'];
+            invs.forEach(i => {
+                const btn = document.getElementById(`btn-inv-${i}`);
+                if (!btn) return;
+                if (i === appState.inversion) {
+                    btn.className = "py-2.5 sm:py-3 px-2 rounded-xl font-bold border text-[11px] sm:text-xs text-center bg-brand-600/20 border-brand-500 text-white shadow-inner";
+                } else {
+                    btn.className = "py-2.5 sm:py-3 px-2 rounded-xl font-bold border border-gray-800 bg-gray-900/40 text-gray-400 hover:text-white";
+                }
+            });
+        }
+
+        function setInversion(inv) {
+            appState.inversion = inv;
+            updateInversionButtons();
+            calculateVoicings();
+        }
+
+        function nextPosition() {
+            if (appState.allVoicings.length === 0) return;
+            appState.selectedVoicingIndex = (appState.selectedVoicingIndex + 1) % appState.allVoicings.length;
+            updateVisuals();
+        }
+
+        function prevPosition() {
+            if (appState.allVoicings.length === 0) return;
+            appState.selectedVoicingIndex = (appState.selectedVoicingIndex - 1 + appState.allVoicings.length) % appState.allVoicings.length;
+            updateVisuals();
+        }
+
+        function updateVisuals() {
+            const activeVoicing = appState.allVoicings[appState.selectedVoicingIndex];
+            const chordType = getChordType();
+            const targetDegrees = rotateDegrees(chordType.degrees, appState.inversion);
+            
+            document.getElementById("active-chord-label").innerText = getChordSymbol();
+            const inversionLabelText = `${INVERSION_LABELS[appState.inversion]} (${INVERSION_EN_LABELS[appState.inversion]})`;
+            const degreeFormulaText = targetDegrees.map(getDegreeDisplay).join(" - ");
+            const omissionText = chordType.description ? ` · ${chordType.description}` : "";
+            document.getElementById("active-voicing-label").innerText = `${inversionLabelText} (${degreeFormulaText})${omissionText}`;
+            
+            const counter = document.getElementById("position-counter");
+            if (appState.allVoicings.length > 0) {
+                counter.innerText = `위치 ${appState.selectedVoicingIndex + 1}/${appState.allVoicings.length}`;
+            } else {
+                counter.innerText = `가능한 폼이 없음`;
+            }
+            
+            renderFretboard();
+            
+            if (activeVoicing) {
+                document.getElementById("analysis-bass-note").innerText = activeVoicing.noteNames[0];
+                document.getElementById("analysis-mid-note").innerText = activeVoicing.noteNames[1];
+                document.getElementById("analysis-top-note").innerText = activeVoicing.noteNames[2];
+                
+                const slots = [
+                    { degree: activeVoicing.degrees[0], id: "analysis-bass-degree" },
+                    { degree: activeVoicing.degrees[1], id: "analysis-mid-degree" },
+                    { degree: activeVoicing.degrees[2], id: "analysis-top-degree" }
+                ];
+
+                slots.forEach(slot => {
+                    const el = document.getElementById(slot.id);
+                    el.innerText = getDegreeText(slot.degree);
+                    el.className = `block text-xs mt-1 font-bold ${getDegreeTextClass(slot.degree)}`;
+                });
+
+                const fretDetails = activeVoicing.strings.map((strIdx, i) => {
+                    return `${strIdx + 1}번줄: ${activeVoicing.frets[i]}F`;
+                }).reverse().join(" | ");
+                
+                document.getElementById("fret-detail-label").innerHTML = `<i class="fa-solid fa-hand-point-right mr-1 text-amber-400"></i> 현재 운지: <strong>${fretDetails}</strong>`;
+            } else {
+                document.getElementById("analysis-bass-note").innerText = "-";
+                document.getElementById("analysis-mid-note").innerText = "-";
+                document.getElementById("analysis-top-note").innerText = "-";
+                ["analysis-bass-degree", "analysis-mid-degree", "analysis-top-degree"].forEach(id => {
+                    const el = document.getElementById(id);
+                    el.innerText = "-";
+                    el.className = "block text-xs mt-1 font-bold text-gray-500";
+                });
+                document.getElementById("fret-detail-label").innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1 text-red-500"></i> 사용 가능한 운지 폼이 없습니다.`;
+            }
+        }
+
+        function getRootFret(voicing) {
+            if (!voicing) return null;
+            const rootIdx = voicing.degrees.indexOf("R");
+            return rootIdx >= 0 ? voicing.frets[rootIdx] : null;
+        }
+
+        function chooseRepresentativeVoicing(voicings) {
+            if (!voicings || voicings.length === 0) return null;
+            const rootFretInputEl = document.getElementById('root-fret-input');
+            const rootFretInput = rootFretInputEl ? rootFretInputEl.value.trim() : "";
+            const targetRootFret = parseInt(rootFretInput, 10);
+
+            if (rootFretInput !== "" && !isNaN(targetRootFret)) {
+                return voicings.slice().sort((a, b) => Math.abs(getRootFret(a) - targetRootFret) - Math.abs(getRootFret(b) - targetRootFret))[0];
+            }
+
+            return voicings.find(v => Math.min(...v.frets) > 0) || voicings[0];
+        }
+
+        function generateChordSVGFromVoicing(voicing) {
+            if (!voicing) {
+                return `<div class="text-xs text-gray-500 h-32 flex items-center justify-center">폼 없음</div>`;
+            }
+
+            const isVertical = (appState.orientation === 'vertical');
+            const rootFretInputEl = document.getElementById('root-fret-input');
+            const rootFretInput = rootFretInputEl ? rootFretInputEl.value.trim() : "";
+            const showNoteName = rootFretInput !== "";
+            const minFret = Math.min(...voicing.frets);
+            const maxFret = Math.max(...voicing.frets);
+            let displayStart = minFret <= 1 ? 0 : Math.max(1, minFret - 1);
+            if (maxFret > displayStart + 4) displayStart = Math.max(0, maxFret - 4);
+
+            const fretCount = 4;
+            const stringCount = 6;
+            const activeByString = new Map();
+            voicing.strings.forEach((stringIndex, i) => {
+                activeByString.set(stringIndex, {
+                    fret: voicing.frets[i],
+                    degree: voicing.degrees[i],
+                    noteName: voicing.noteNames[i]
+                });
+            });
+
+            function renderNoteBadge(x, y, degree, label, radius = 9.5) {
+                const svgClass = getSvgFillClass(degree);
+                return `
+                <g style="${svgClass.glow}">
+                    <circle cx="${x}" cy="${y}" r="${radius}" class="${svgClass.fill} ${svgClass.stroke}" stroke-width="1.5" />
+                    <text x="${x}" y="${y + 3.5}" text-anchor="middle" class="${svgClass.text}">${label}</text>
+                </g>`;
+            }
+
+            if (isVertical) {
+                // Six-string chord-box layout: left to right = 6th to 1st string.
+                const width = 150;
+                const height = 166;
+                const paddingLeft = 18;
+                const paddingRight = 18;
+                const paddingTop = 38;
+                const paddingBottom = 14;
+                const xSpacing = (width - paddingLeft - paddingRight) / (stringCount - 1);
+                const ySpacing = (height - paddingTop - paddingBottom) / fretCount;
+                let svg = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-auto max-h-[170px] overflow-visible select-none">`;
+
+                // String numbers and muted/open markers
+                for (let col = 0; col < stringCount; col++) {
+                    const physicalString = 5 - col; // 6th string on the left, 1st string on the right
+                    const x = paddingLeft + col * xSpacing;
+                    const active = activeByString.get(physicalString);
+                    svg += `<text x="${x}" y="10" text-anchor="middle" class="font-bold text-[7px] fill-zinc-600">${physicalString + 1}</text>`;
+                    if (!active) {
+                        svg += `<text x="${x}" y="27" text-anchor="middle" class="font-black text-[11px] fill-zinc-500">×</text>`;
+                    } else if (active.fret === 0 && displayStart === 0) {
+                        const label = showNoteName ? active.noteName : getDegreeDisplay(active.degree);
+                        svg += renderNoteBadge(x, paddingTop - 13, active.degree, label, 8.5);
+                    }
+                }
+
+                // Fret wires
+                for (let f = 0; f <= fretCount; f++) {
+                    const y = paddingTop + f * ySpacing;
+                    const isNut = displayStart === 0 && f === 0;
+                    const strokeColor = isNut ? '#f59e0b' : '#4b5563';
+                    const strokeWidth = isNut ? '3.5' : '1.5';
+                    svg += `<line x1="${paddingLeft}" y1="${y}" x2="${width - paddingRight}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linecap="round" />`;
+                }
+
+                // String wires
+                for (let col = 0; col < stringCount; col++) {
+                    const physicalString = 5 - col;
+                    const x = paddingLeft + col * xSpacing;
+                    const thickness = 1.05 + (physicalString * 0.28);
+                    svg += `<line x1="${x}" y1="${paddingTop}" x2="${x}" y2="${height - paddingBottom}" stroke="#9ca3af" stroke-width="${thickness}" stroke-opacity="0.82" />`;
+                }
+
+                if (displayStart > 0) {
+                    svg += `<text x="${paddingLeft - 10}" y="${paddingTop + 5}" text-anchor="middle" class="font-bold text-[8px] fill-amber-400">${displayStart}F</text>`;
+                }
+
+                activeByString.forEach((active, physicalString) => {
+                    if (active.fret === 0 && displayStart === 0) return;
+                    const relative = active.fret - displayStart;
+                    if (relative < 0 || relative > fretCount) return;
+                    const col = 5 - physicalString;
+                    const x = paddingLeft + col * xSpacing;
+                    const y = paddingTop + (relative - 0.5) * ySpacing;
+                    const label = showNoteName ? active.noteName : getDegreeDisplay(active.degree);
+                    svg += renderNoteBadge(x, y, active.degree, label);
+                });
+
+                svg += `</svg>`;
+                return svg;
+            }
+
+            // Six-string horizontal mini-fretboard layout: top to bottom = 1st to 6th string.
+            const width = 206;
+            const height = 148;
+            const paddingLeft = 36;
+            const paddingRight = 12;
+            const paddingTop = 18;
+            const paddingBottom = 18;
+            const ySpacing = (height - paddingTop - paddingBottom) / (stringCount - 1);
+            const xSpacing = (width - paddingLeft - paddingRight) / fretCount;
+            let svg = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-auto overflow-visible select-none">`;
+
+            // String labels and muted/open markers
+            for (let physicalString = 0; physicalString < stringCount; physicalString++) {
+                const y = paddingTop + physicalString * ySpacing;
+                const active = activeByString.get(physicalString);
+                svg += `<text x="6" y="${y + 3}" text-anchor="middle" class="font-bold text-[7px] fill-zinc-600">${physicalString + 1}</text>`;
+                if (!active) {
+                    svg += `<text x="22" y="${y + 4}" text-anchor="middle" class="font-black text-[11px] fill-zinc-500">×</text>`;
+                } else if (active.fret === 0 && displayStart === 0) {
+                    const label = showNoteName ? active.noteName : getDegreeDisplay(active.degree);
+                    svg += renderNoteBadge(22, y, active.degree, label, 8.5);
+                }
+            }
+
+            // Fret wires
+            for (let f = 0; f <= fretCount; f++) {
+                const x = paddingLeft + f * xSpacing;
+                const isNut = displayStart === 0 && f === 0;
+                const strokeColor = isNut ? '#f59e0b' : '#4b5563';
+                const strokeWidth = isNut ? '3.5' : '1.5';
+                svg += `<line x1="${x}" y1="${paddingTop}" x2="${x}" y2="${height - paddingBottom}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linecap="round" />`;
+            }
+
+            // String wires
+            for (let physicalString = 0; physicalString < stringCount; physicalString++) {
+                const y = paddingTop + physicalString * ySpacing;
+                const thickness = 1.05 + (physicalString * 0.28);
+                svg += `<line x1="${paddingLeft}" y1="${y}" x2="${width - paddingRight}" y2="${y}" stroke="#9ca3af" stroke-width="${thickness}" stroke-opacity="0.82" />`;
+            }
+
+            if (displayStart > 0) {
+                svg += `<text x="${paddingLeft}" y="${height - 3}" text-anchor="middle" class="font-bold text-[8px] fill-amber-400">${displayStart}F</text>`;
+            }
+
+            activeByString.forEach((active, physicalString) => {
+                if (active.fret === 0 && displayStart === 0) return;
+                const relative = active.fret - displayStart;
+                if (relative < 0 || relative > fretCount) return;
+                const x = paddingLeft + (relative - 0.5) * xSpacing;
+                const y = paddingTop + physicalString * ySpacing;
+                const label = showNoteName ? active.noteName : getDegreeDisplay(active.degree);
+                svg += renderNoteBadge(x, y, active.degree, label);
+            });
+
+            svg += `</svg>`;
+            return svg;
+        }
+
+        function renderVisualCheatSheet() {
+            const container = document.getElementById('cheat-sheet-sections');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const q = appState.quality;
+            const type = CHORD_TYPES[q];
+            if (!type) return;
+
+            const group = CHEAT_GROUPS.find(g => g.types.includes(q)) || {
+                title: `${type.group} 코드 폼`,
+                subtitle: type.description,
+                icon: "fa-layer-group"
+            };
+
+            const section = document.createElement('div');
+            section.className = "space-y-5";
+            section.innerHTML = `
+                <div class="flex items-start gap-3 border-b border-gray-800 pb-3">
+                    <div class="w-9 h-9 rounded-xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center text-brand-300">
+                        <i class="fa-solid ${group.icon}"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-base font-black text-white">선택한 코드타입 코드 폼</h4>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            현재 선택: <b class="text-brand-300">${getChordSymbol(appState.root, q)} ${type.label}</b> · ${type.formula} · ${type.description}
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            const typeGrid = document.createElement('div');
+            typeGrid.className = "grid grid-cols-1 gap-4 sm:gap-6";
+
+            const typeBox = document.createElement('div');
+            typeBox.className = "bg-gray-900/20 p-3 sm:p-4 rounded-2xl border border-gray-800/80 space-y-4";
+            typeBox.innerHTML = `
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                        <div class="text-sm font-black text-white">${getChordSymbol(appState.root, q)} <span class="text-xs font-semibold text-gray-400">${type.label}</span></div>
+                        <div class="text-[11px] text-brand-300 font-bold mt-0.5">${type.group} · ${type.formula}</div>
+                    </div>
+                    <span class="text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-full px-2 py-1">${type.description}</span>
+                </div>
+            `;
+
+            const rows = document.createElement('div');
+            rows.className = "space-y-4";
+
+            ['123', '234', '345', '456'].forEach(setKey => {
+                const row = document.createElement('div');
+                row.className = "space-y-2";
+                const label = document.createElement('span');
+                label.className = "text-xs font-semibold text-gray-400 block";
+                label.innerHTML = `<i class="fa-solid fa-circle-chevron-right text-brand-500 mr-1"></i>${STRING_SET_LABELS[setKey]}`;
+                row.appendChild(label);
+
+                const cardGrid = document.createElement('div');
+                cardGrid.className = "grid grid-cols-1 sm:grid-cols-3 gap-3";
+
+                ['root', '1st', '2nd'].forEach(invKey => {
+                    const voicings = calculateVoicingsFor(appState.root, q, setKey, invKey);
+                    const voicing = chooseRepresentativeVoicing(voicings);
+                    const card = document.createElement('div');
+                    card.className = "bg-gray-950 hover:bg-zinc-900 border border-gray-800/80 hover:border-brand-500/50 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between items-center transition-all duration-300 transform hover:-translate-y-1 cursor-pointer group shadow-lg";
+                    card.onclick = () => selectAndPlayCheatChord(q, setKey, invKey);
+                    const formula = rotateDegrees(type.degrees, invKey).map(getDegreeDisplay).join(" - ");
+                    const fretText = voicing ? voicing.frets.map((f, i) => `${voicing.strings[i] + 1}번 ${f}F`).reverse().join(' · ') : '폼 없음';
+                    card.innerHTML = `
+                        <div class="w-full text-center mb-2">
+                            <span class="block text-[11px] font-bold text-gray-300 group-hover:text-brand-400 transition-colors">${INVERSION_LABELS[invKey]}</span>
+                            <span class="block text-[9px] font-medium text-gray-500">${formula}</span>
+                            <span class="block text-[8px] font-medium text-amber-400/80 mt-0.5 truncate" title="${fretText}">${fretText}</span>
+                        </div>
+                        <div class="relative w-full flex justify-center items-center">
+                            ${generateChordSVGFromVoicing(voicing)}
+                            <div class="absolute inset-0 bg-brand-600/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                <div class="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/30 transform scale-75 group-hover:scale-100 transition-transform">
+                                    <i class="fa-solid fa-play text-xs pl-0.5"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    cardGrid.appendChild(card);
+                });
+
+                row.appendChild(cardGrid);
+                rows.appendChild(row);
+            });
+
+            typeBox.appendChild(rows);
+            typeGrid.appendChild(typeBox);
+            section.appendChild(typeGrid);
+            container.appendChild(section);
+        }
+
+        function setOrientation(orient) {
+            appState.orientation = orient;
+            
+            const btnHoriz = document.getElementById('btn-orient-horiz');
+            const btnVert = document.getElementById('btn-orient-vert');
+            
+            if (orient === 'horizontal') {
+                btnHoriz.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-brand-600 text-white shadow-lg shadow-brand-600/20";
+                btnVert.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-gray-400 hover:text-white";
+            } else {
+                btnHoriz.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-gray-400 hover:text-white";
+                btnVert.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-brand-600 text-white shadow-lg shadow-brand-600/20";
+            }
+            
+            renderVisualCheatSheet();
+        }
+
+        function selectAndPlayCheatChord(quality, stringSet, inversionKey) {
+            appState.quality = quality;
+            appState.stringSet = stringSet;
+            appState.inversion = inversionKey;
+            setupChordTypeSelector();
+            updateChordLegend();
+            updateStringSetButtons();
+            updateInversionButtons();
+            appState.allVoicings = calculateVoicingsFor(appState.root, appState.quality, appState.stringSet, appState.inversion);
+            const representative = chooseRepresentativeVoicing(appState.allVoicings);
+            appState.selectedVoicingIndex = representative ? appState.allVoicings.indexOf(representative) : 0;
+            updateVisuals();
+            renderVisualCheatSheet();
+            setTimeout(() => playChordStrum(), 100);
+        }
+
+        window.onload = function() {
+            setupRootSelector();
+            setupChordTypeSelector();
+            updateChordLegend();
+            updateStringSetButtons();
+            updateInversionButtons();
+            calculateVoicings();
+            setOrientation('horizontal');
+            
+            document.getElementById("btn-strum").addEventListener('click', playChordStrum);
+            document.getElementById("btn-arpeggio").addEventListener('click', playArpeggio);
+            
+            window.addEventListener('resize', () => renderFretboard());
+        };
+    </script>
+
+</body>
+</html>
