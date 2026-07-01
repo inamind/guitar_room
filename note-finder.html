@@ -249,51 +249,73 @@
 
 <main>
     <!-- ── TOP PANEL ───────────────────────────────────────── -->
-    <aside class="panel">
-        <div class="top-wrap">
-            <!-- Left: Note display & Buttons -->
-            <div class="top-left">
-                <!-- Note display -->
-                <div class="note-stage">
-                    <div class="stage-lbl">현재 계이름</div>
-                    <div id="note-display">—</div>
-                    <div class="phase-badge ph-idle" id="phase-badge">
-                        <i class="fa-solid fa-pause fa-xs"></i> 대기 중
+    <aside class="panel" style="padding: 0.8rem 1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 1rem; flex-wrap:wrap;">
+            
+            <!-- Note Stage & Timer -->
+            <div style="display:flex; align-items:center; gap: 1rem;">
+                <div class="note-stage" style="padding: 0.4rem 1rem; flex-direction:row; height:auto; width:auto; border-radius:12px; flex:none; justify-content:flex-start;">
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        <div class="stage-lbl" style="font-size:0.55rem; margin-bottom:0.2rem;">현재 계이름</div>
+                        <div id="note-display" style="font-size:3rem; min-height:48px; min-width:60px; margin:0; line-height:1;">—</div>
+                    </div>
+                    <div style="width:1px; height:45px; background:rgba(255,255,255,0.1); margin:0 0.75rem;"></div>
+                    <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-start;">
+                        <div class="phase-badge ph-idle" id="phase-badge" style="padding: 0.15rem 0.5rem; font-size: 0.65rem;">
+                            <i class="fa-solid fa-pause fa-xs"></i> 대기 중
+                        </div>
+                        <div id="timer-lbl" style="font-size:0.9rem; text-align:left; min-width:140px; font-weight:600; color:var(--text); min-height:1rem;">시작을 누르세요</div>
+                        <div class="timer-wrap" style="height:5px; max-width:140px; margin:0; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; width:100%;">
+                            <div id="timer-fill" style="width:100%; height:100%; background:linear-gradient(90deg,var(--v),var(--cyan)); border-radius:4px;"></div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Buttons -->
-                <div class="btn-row">
-                    <button class="btn-start" id="btn-start" onclick="togglePractice()">
-                        <i class="fa-solid fa-play" id="start-icon"></i>
-                        <span id="start-lbl">연습 시작</span>
-                    </button>
-                    <button class="btn-hint" id="btn-hint" onclick="hintReveal()" style="display:none">
-                        <i class="fa-solid fa-lightbulb"></i> 힌트
-                    </button>
-                </div>
-                <div class="kbd-hint"><kbd>Space</kbd> 공개/다음&nbsp;&nbsp;<kbd>H</kbd> 힌트</div>
             </div>
 
-            <!-- Right: Options -->
-            <div class="top-right">
+            <!-- Buttons & Stats -->
+            <div style="display:flex; align-items:center; justify-content:center; gap: 0.75rem; flex-wrap:wrap; flex:1;">
+                
+                <!-- Stats (Horizontal) -->
+                <div style="display:flex; gap:0.75rem; font-size:0.75rem; background:rgba(255,255,255,0.03); padding:0.5rem 0.75rem; border-radius:10px;">
+                    <div><span style="color:var(--muted)">문제</span> <span id="stat-count" style="color:#a78bfa; font-weight:bold; margin-left:0.2rem;">0</span></div>
+                    <div><span style="color:var(--muted)">경과</span> <span id="stat-time" style="color:#fcd34d; font-weight:bold; margin-left:0.2rem;">0s</span></div>
+                    <div><span style="color:var(--muted)">연속</span> <span id="stat-streak" style="color:#6ee7b7; font-weight:bold; margin-left:0.2rem;">0</span></div>
+                </div>
+
+                <button class="btn-start" id="btn-start" onclick="togglePractice()" style="padding: 0.55rem 1.1rem; width:130px; border-radius:10px; flex:none;">
+                    <i class="fa-solid fa-play" id="start-icon"></i>
+                    <span id="start-lbl">연습 시작</span>
+                </button>
+                <button class="btn-hint" id="btn-hint" onclick="hintReveal()" style="display:none; padding: 0.55rem 1rem; border-radius:10px; flex:none;">
+                    <i class="fa-solid fa-lightbulb"></i> 힌트
+                </button>
+                
+                <button class="mini-btn" onclick="toggleOpts()" style="padding: 0.55rem 1rem; font-size:0.8rem; border-radius:10px; background:#374151; color:#fff; border:none; flex:none;">
+                    <i class="fa-solid fa-gear"></i> 설정
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Options -->
+        <div id="opts-panel" class="opts-panel">
+            <div class="top-wrap" style="align-items:stretch; background:rgba(255,255,255,0.02); padding:1rem; border-radius:12px; border:1px solid var(--border);">
                 <!-- Options -->
                 <div class="opt-section" style="flex:1;min-width:200px;">
                     <div class="panel-title">옵션</div>
                     <div class="opt-row">
-                        <div><div class="opt-name"># (샤프) 포함</div><div class="opt-sub">C#, D#, F#, G#, A#</div></div>
+                        <div><div class="opt-name"># (샵) 포함</div><div class="opt-sub">C#, D#, F#, G#, A#</div></div>
                         <label class="toggle"><input type="checkbox" id="opt-sharp"><span class="tslider"></span></label>
                     </div>
                     <div class="opt-row">
-                        <div><div class="opt-name">♭ (플랫) 포함</div><div class="opt-sub">Db, Eb, Gb, Ab, Bb</div></div>
+                        <div><div class="opt-name">b (플랫) 포함</div><div class="opt-sub">Db, Eb, Gb, Ab, Bb</div></div>
                         <label class="toggle"><input type="checkbox" id="opt-flat"><span class="tslider"></span></label>
                     </div>
                     <div class="opt-row">
-                        <div><div class="opt-name">정답 공개 전 대기</div><div class="opt-sub">계이름 표시 → 지판 공개까지</div></div>
+                        <div><div class="opt-name">정답 공개 전 대기</div><div class="opt-sub">계이름 표시 후 지판 공개까지</div></div>
                         <div class="num-wrap"><input class="num-in" type="number" id="opt-reveal" min="1" max="60" value="2"><span class="num-unit">초</span></div>
                     </div>
                     <div class="opt-row">
-                        <div><div class="opt-name">공개 후 다음까지</div><div class="opt-sub">정답 확인 후 다음 문제까지</div></div>
+                        <div><div class="opt-name">공개 후 다음 문제까지</div><div class="opt-sub">정답 확인 후 다음 문제 출제까지</div></div>
                         <div class="num-wrap"><input class="num-in" type="number" id="opt-next" min="1" max="60" value="1"><span class="num-unit">초</span></div>
                     </div>
                 </div>
@@ -309,25 +331,6 @@
                     </div>
                     <div id="str-sel"></div>
                 </div>
-
-                <!-- Stats -->
-                <div class="opt-section" style="flex:1;min-width:140px;">
-                    <div class="panel-title">통계</div>
-                    <div class="stats-grid" style="grid-template-columns:1fr; gap:.8rem;">
-                        <div class="stat-box" style="display:flex;justify-content:space-between;padding:.5rem 1rem;align-items:center;">
-                            <div class="stat-lbl">문제 수</div>
-                            <div class="stat-val" id="stat-count" style="color:#a78bfa;font-size:1.2rem;">0</div>
-                        </div>
-                        <div class="stat-box" style="display:flex;justify-content:space-between;padding:.5rem 1rem;align-items:center;">
-                            <div class="stat-lbl">경과</div>
-                            <div class="stat-val" id="stat-time" style="color:#fcd34d;font-size:1.2rem;">0s</div>
-                        </div>
-                        <div class="stat-box" style="display:flex;justify-content:space-between;padding:.5rem 1rem;align-items:center;">
-                            <div class="stat-lbl">연속</div>
-                            <div class="stat-val" id="stat-streak" style="color:#6ee7b7;font-size:1.2rem;">0</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </aside>
@@ -335,10 +338,7 @@
     <!-- ── BOTTOM: FRETBOARD ──────────────────────────────────── -->
     <section class="fb-section">
         
-        <!-- Timer -->
-        <div class="timer-container">
-            <div id="timer-lbl">시작 버튼을 눌러 연습을 시작하세요</div>
-            <div class="timer-wrap"><div id="timer-fill" style="width:100%"></div></div>
+        
         </div>
 
         <div class="fb-top-bar">
@@ -841,8 +841,8 @@ function tickLabel() {
     if (!timerOnDone) return;
     const rem = Math.max(0, Math.ceil((timerDur - (performance.now() - timerStart)) / 1000));
     const el  = document.getElementById('timer-lbl');
-    if (phase === 'thinking')  el.innerHTML = `문제 시간: <span style="font-size:1.6rem; color:var(--v); font-weight:900; margin:0 .3rem;">${rem}</span> 초`;
-    if (phase === 'revealed')  el.innerHTML = `대기 시간: <span style="font-size:1.6rem; color:var(--cyan); font-weight:900; margin:0 .3rem;">${rem}</span> 초`;
+    if (phase === 'thinking')  el.innerHTML = `문제 시간: <span style="font-size:1.15rem; color:var(--v); font-weight:900; margin:0 .3rem;">${rem}</span> 초`;
+    if (phase === 'revealed')  el.innerHTML = `대기 시간: <span style="font-size:1.15rem; color:var(--cyan); font-weight:900; margin:0 .3rem;">${rem}</span> 초`;
     rafId = requestAnimationFrame(tickLabel);
 }
 
