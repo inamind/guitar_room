@@ -191,7 +191,7 @@
             65% {transform:scale(1.22);}
             100%{opacity:1;transform:scale(1);}
         }
-        .dot-g{transform-box:fill-box;transform-origin:center;cursor:pointer;}
+        .dot-g{cursor:pointer;}
         .dot-g.animated{animation:dotPop .3s cubic-bezier(.34,1.56,.64,1) both;}
 
         /* History */
@@ -668,8 +668,11 @@ function showDots(noteName, withAnim = true) {
             const delay = withAnim ? idx * 38 : 0;
             const midi  = open + f;
 
-            // Group translated to (cx,cy) so transform-origin:center works
-            const g = mk('g', { transform: `translate(${cx},${cy})`, class: 'dot-g' });
+            // Group translated to (cx,cy)
+            const wrapper = mk('g', { transform: `translate(${cx},${cy})` });
+            
+            // Inner group for scale animation
+            const g = mk('g', { class: 'dot-g' });
             g.style.animationDelay = delay + 'ms';
 
             g.appendChild(mk('circle', {
@@ -689,7 +692,8 @@ function showDots(noteName, withAnim = true) {
             // Click = play that note
             g.addEventListener('click', () => { if (synth) playSingleNote(midi); });
 
-            layer.appendChild(g);
+            wrapper.appendChild(g);
+            layer.appendChild(wrapper);
 
             if (withAnim) {
                 requestAnimationFrame(() => g.classList.add('animated'));
