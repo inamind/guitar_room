@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Tone.js CDN for Web Audio -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="guitar-synth.js"></script>
     <!-- Google Font (Inter & Noto Sans KR) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
@@ -503,20 +504,11 @@
             if (isAudioInitialized) return;
             
             try {
-                synth = new Tone.PolySynth(Tone.Synth, {
-                    oscillator: { type: "sine" },
-                    envelope: {
-                        attack: 0.05,
-                        decay: 0.2,
-                        sustain: 0.4,
-                        release: 1.2
-                    },
-                    volume: -8
-                }).toDestination();
+                synth = await getGuitarSynth();
 
-                delayEffect = new Tone.FeedbackDelay("8n.", 0.2).toDestination();
+                
                 delayEffect.wet.value = 0.15;
-                synth.connect(delayEffect);
+                
 
                 isAudioInitialized = true;
                 

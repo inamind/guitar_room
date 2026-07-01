@@ -75,26 +75,22 @@ E|--------------------------------------|
     </section>
   </main>
 
-<script>
-(() => {
-  const playBtn = document.getElementById("play");
-  const stopBtn = document.getElementById("stop");
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script src="guitar-synth.js"></script>
+  <script>
+(function(){
   const bpmEl = document.getElementById("bpm");
   const bpmValue = document.getElementById("bpmValue");
+  const playBtn = document.getElementById("play");
+  const stopBtn = document.getElementById("stop");
   const loopEl = document.getElementById("loop");
-  const chordEl = document.getElementById("chord");
+  const chordEl = document.getElementById("chord-display");
 
-  let ctx = null;
-  let timers = [];
   let isPlaying = false;
+  let synth = null;
+  let timers = [];
+  const openMidi = { e: 64, B: 59, G: 55, D: 50 };
 
-  // 보이는 TAB 3줄 기준: e, B, G
-  // MIDI: e4=64, B3=59, G3=55
-  const openMidi = { e: 64, B: 59, G: 55 };
-
-  // 이미지 기준 사용 줄은 2, 3, 4번줄 = B, G, D.
-  // 괄호의 3은 첫 3개 세로줄에만 적용.
-  // 0, 1/3, 2/3 위치의 세 음이 셋잇단 1박이고, 마지막 음은 다음 1박 전체.
   const score = [
     { chord: "C", events: [
       { atBeat: 0,      durationBeat: 1 / 3, muted: true,  notes: [] },
@@ -110,79 +106,6 @@ E|--------------------------------------|
     ]}
   ];
 
-  function midiToHz(midi) {
-    return 440 * Math.pow(2, (midi - 69) / 12);
-  }
-
-  function pluck(freq, when, duration = 0.85) {
-    // Karplus-Strong 느낌의 짧은 기타 플럭
-    const sr = ctx.sampleRate;
-    const length = Math.max(2, Math.round(sr / freq));
-    const buffer = ctx.createBuffer(1, Math.floor(sr * duration), sr);
-    const data = buffer.getChannelData(0);
-
-    for (let i = 0; i < length && i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    for (let i = length; i < data.length; i++) {
-      data[i] = 0.497 * (data[i - length] + data[i - length + 1]);
-      data[i] *= Math.pow(0.9985, i / length);
-    }
-
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(0.28, when + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(2600, when);
-    filter.frequency.exponentialRampToValueAtTime(900, when + duration);
-
-    src.connect(filter).connect(gain).connect(ctx.destination);
-    src.start(when);
-    src.stop(when + duration + 0.05);
-  }
-
-  function mutedStrum(when, duration = 0.12) {
-    // 손바닥/왼손 뮤트 느낌: 짧은 노이즈 + 빠른 감쇠 + 대역 제한
-    const sr = ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, Math.floor(sr * duration), sr);
-    const data = buffer.getChannelData(0);
-
-    for (let i = 0; i < data.length; i++) {
-      const decay = Math.pow(1 - i / data.length, 2.2);
-      data[i] = (Math.random() * 2 - 1) * decay;
-    }
-
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-
-    const bandpass = ctx.createBiquadFilter();
-    bandpass.type = "bandpass";
-    bandpass.frequency.setValueAtTime(1450, when);
-    bandpass.Q.setValueAtTime(1.15, when);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(0.20, when + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-
-    src.connect(bandpass).connect(gain).connect(ctx.destination);
-    src.start(when);
-    src.stop(when + duration + 0.02);
-  }
-
-
-  function playNoteGroup(group, when, duration = 0.85) {
-    group.forEach((n, idx) => {
-      const midi = openMidi[n.string] + n.fret;
-      // 아주 미세한 시간차로 기타 스트럼 느낌
-      pluck(midiToHz(midi), when + idx * 0.012, duration);
-    });
-  }
-
   function clearTimers() {
     timers.forEach(clearTimeout);
     timers = [];
@@ -191,7 +114,7 @@ E|--------------------------------------|
   function stop() {
     isPlaying = false;
     clearTimers();
-    chordEl.textContent = "정지";
+    chordEl.textContent = "대기";
   }
 
   function scheduleOnce(startTime) {
@@ -202,12 +125,17 @@ E|--------------------------------------|
     score.forEach(section => {
       section.events.forEach((beatEvent) => {
         const when = t + beatEvent.atBeat * beat;
-        timers.push(setTimeout(() => chordEl.textContent = beatEvent.muted ? section.chord + " / mute" : section.chord, Math.max(0, (when - ctx.currentTime) * 1000)));
-        if (beatEvent.muted) mutedStrum(when);
-        if (beatEvent.notes.length) playNoteGroup(beatEvent.notes, when, Math.max(0.18, beatEvent.durationBeat * beat * 1.6));
+        const uiDelay = Math.max(0, (when - Tone.now()) * 1000);
+        timers.push(setTimeout(() => chordEl.textContent = beatEvent.muted ? section.chord + " / mute" : section.chord, uiDelay));
+        
+        if (beatEvent.notes.length) {
+          const duration = Math.max(0.18, beatEvent.durationBeat * beat * 1.6);
+          beatEvent.notes.forEach((n, idx) => {
+            const midi = openMidi[n.string] + n.fret;
+            synth.triggerAttackRelease(Tone.Frequency(midi, "midi"), duration, when + idx * 0.012);
+          });
+        }
       });
-
-      // 한 코드 패턴 전체 길이: 2박자.
       t += beat * 2;
     });
 
